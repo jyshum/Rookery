@@ -1,5 +1,5 @@
 import type { DrawFn, LayerName } from '../renderer'
-import type { Point, Viewport } from '../types'
+import type { Annotation, Point, Viewport } from '../types'
 
 /**
  * What a tool is allowed to touch.
@@ -15,6 +15,8 @@ export interface ToolContext {
   viewport(): Viewport
   /** Replace what the interaction layer draws. Pass null to clear it. */
   setPreview(fn: DrawFn | null): void
+  /** Topmost annotation at an image-space point, via the spatial grid. */
+  hitTest(p: Point): Annotation | null
   invalidate(...layers: LayerName[]): void
 }
 
@@ -24,6 +26,8 @@ export interface Tool {
   onPointerDown?(e: PointerEvent, ctx: ToolContext): void
   onPointerMove?(e: PointerEvent, ctx: ToolContext): void
   onPointerUp?(e: PointerEvent, ctx: ToolContext): void
+  /** Return true to consume the key, stopping global shortcuts from seeing it. */
+  onKeyDown?(e: KeyboardEvent, ctx: ToolContext): boolean | void
   /** Escape, or switching tools mid-gesture. */
   cancel?(ctx: ToolContext): void
 }
