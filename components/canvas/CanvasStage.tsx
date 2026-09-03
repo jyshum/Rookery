@@ -5,12 +5,16 @@ import {
   Renderer,
   sizeCanvas,
   LAYER_ORDER,
+  type DrawFn,
   type LayerContexts,
   type LayerName,
 } from '@/lib/canvas/renderer'
 import { drawImageLayer, loadBitmap } from '@/lib/canvas/layers/image-layer'
+import { drawVectorLayer } from '@/lib/canvas/layers/vector-layer'
 import { fitToContainer } from '@/lib/canvas/transform'
-import { useStore } from '@/lib/state/store'
+import { selectVisibleAnnotations, useStore } from '@/lib/state/store'
+import { useViewportControls } from './useViewportControls'
+import { useTools } from './useTools'
 
 /**
  * Owns the four stacked canvases and the render loop.
@@ -30,6 +34,12 @@ export function CanvasStage() {
   const interactionRef = useRef<HTMLCanvasElement>(null)
 
   const rendererRef = useRef<Renderer | null>(null)
+  /** What the active tool wants drawn on the interaction layer, if anything. */
+  const previewRef = useRef<DrawFn | null>(null)
+
+  useViewportControls(wrapRef)
+  useTools(wrapRef, rendererRef, previewRef)
+
   const bitmapRef = useRef<ImageBitmap | null>(null)
   const sizeRef = useRef({ w: 0, h: 0 })
 
@@ -68,6 +78,15 @@ export function CanvasStage() {
 
       renderer.setDraw('image', (ctx) => {
         drawImageLayer(ctx, bitmapRef.current, useStore.getState().viewport)
+      })
+
+      renderer.setDraw('vector', (ctx) => {
+        const s = useStore.getState()
+        drawVectorLayer(ctx, selectVisibleAnnotations(s), s.classes, s.viewport, s.selectedId)
+      })
+
+      renderer.setDraw('interaction', (ctx) => {
+        previewRef.current?.(ctx)
       })
 
       fitActiveImage()
@@ -127,7 +146,19 @@ export function CanvasStage() {
     const unsubViewport = useStore.subscribe((s) => {
       if (s.viewport === lastViewport) return
       lastViewport = s.viewport
+      // everything is drawn under the viewport transform, so a pan or zoom is
+      // the one case where every layer genuinely has to repaint
       rendererRef.current?.invalidateAll()
+    })
+
+    // committed shapes changed: only the vector layer is stale
+    let lastAnnotations = useStore.getState().annotations
+    let lastSelected = useStore.getState().selectedId
+    const unsubVector = useStore.subscribe((s) => {
+      if (s.annotations === lastAnnotations && s.selectedId === lastSelected) return
+      lastAnnotations = s.annotations
+      lastSelected = s.selectedId
+      rendererRef.current?.invalidate('vector')
     })
 
     return () => {
@@ -135,6 +166,7 @@ export function CanvasStage() {
       ro.disconnect()
       unsubImage()
       unsubViewport()
+      unsubVector()
       rendererRef.current?.destroy()
       bitmapRef.current?.close()
       bitmapRef.current = null

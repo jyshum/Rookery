@@ -1,0 +1,70 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { MousePointer2, Square, PenTool, Brush, Eraser, Undo2, Redo2, Download } from 'lucide-react'
+import { commandStack, useStore } from '@/lib/state/store'
+import type { ToolId } from '@/lib/canvas/types'
+
+const TOOLS: Array<{ id: ToolId; icon: typeof Square; label: string; key: string }> = [
+  { id: 'select', icon: MousePointer2, label: 'Select', key: 'V' },
+  { id: 'box', icon: Square, label: 'Box', key: 'B' },
+  { id: 'polygon', icon: PenTool, label: 'Polygon', key: 'P' },
+  { id: 'brush', icon: Brush, label: 'Brush', key: 'D' },
+  { id: 'erase', icon: Eraser, label: 'Erase', key: 'E' },
+]
+
+export function Toolbar() {
+  const tool = useStore((s) => s.tool)
+  const setTool = useStore((s) => s.setTool)
+
+  // the command stack lives outside the store, so subscribe to it directly
+  // rather than re-reading it on every render
+  const [, forceUpdate] = useState(0)
+  useEffect(() => commandStack.subscribe(() => forceUpdate((n) => n + 1)), [])
+
+  return (
+    <div className="flex h-11 shrink-0 items-center gap-1 border-b border-[var(--color-line)] bg-[var(--color-deep)] px-3">
+      {TOOLS.map(({ id, icon: Icon, label, key }) => (
+        <button
+          key={id}
+          onClick={() => setTool(id)}
+          title={`${label} (${key})`}
+          className={`flex h-7 w-7 items-center justify-center rounded transition ${
+            tool === id
+              ? 'bg-[var(--color-primary)] text-white'
+              : 'text-[var(--color-muted)] hover:bg-white/5 hover:text-[var(--color-text)]'
+          }`}
+        >
+          <Icon size={14} strokeWidth={1.75} />
+        </button>
+      ))}
+
+      <div className="mx-2 h-4 w-px bg-[var(--color-line)]" />
+
+      <button
+        onClick={() => commandStack.undo()}
+        disabled={!commandStack.canUndo}
+        title="Undo (Cmd+Z)"
+        className="flex h-7 w-7 items-center justify-center rounded text-[var(--color-muted)] transition hover:bg-white/5 hover:text-[var(--color-text)] disabled:opacity-25 disabled:hover:bg-transparent"
+      >
+        <Undo2 size={14} strokeWidth={1.75} />
+      </button>
+      <button
+        onClick={() => commandStack.redo()}
+        disabled={!commandStack.canRedo}
+        title="Redo (Cmd+Shift+Z)"
+        className="flex h-7 w-7 items-center justify-center rounded text-[var(--color-muted)] transition hover:bg-white/5 hover:text-[var(--color-text)] disabled:opacity-25 disabled:hover:bg-transparent"
+      >
+        <Redo2 size={14} strokeWidth={1.75} />
+      </button>
+
+      <button
+        title="Export JSON"
+        className="ml-auto flex h-7 items-center gap-1.5 rounded bg-[var(--color-accent)] px-2.5 text-[11px] font-medium text-black transition hover:brightness-110"
+      >
+        <Download size={13} strokeWidth={2} />
+        Export
+      </button>
+    </div>
+  )
+}

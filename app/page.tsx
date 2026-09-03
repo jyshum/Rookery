@@ -6,13 +6,15 @@ import { ImageRail } from '@/components/panels/ImageRail'
 import { StatusBar } from '@/components/panels/StatusBar'
 import { useStore } from '@/lib/state/store'
 import { SAMPLE_IMAGES } from '@/lib/samples'
+import { BUILT_IN_CLASSES } from '@/lib/classes'
+import { Toolbar } from '@/components/panels/Toolbar'
 
 export default function Workspace() {
   // temporary: seeded locally until the backend lands in Task 22
   useEffect(() => {
     useStore.getState().hydrate({
       images: SAMPLE_IMAGES,
-      classes: [],
+      classes: BUILT_IN_CLASSES,
       annotations: [],
     })
   }, [])
@@ -28,6 +30,8 @@ export default function Workspace() {
         </span>
         <span className="eyebrow">Lab-Native Annotation</span>
       </header>
+
+      <Toolbar />
 
       <div className="flex min-h-0 flex-1">
         <ImageRail />
