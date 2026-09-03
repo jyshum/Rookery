@@ -141,3 +141,56 @@ describe('MaskBuffer reset', () => {
     expect(b.strokeCount).toBe(2)
   })
 })
+
+describe('MaskBuffer bounds', () => {
+  it('returns a zero box when nothing is painted', () => {
+    expect(new MaskBuffer(10, 10).bounds()).toEqual([0, 0, 0, 0])
+  })
+
+  it('wraps a single painted pixel', () => {
+    const b = new MaskBuffer(10, 10)
+    b.apply({ points: new Float32Array([5, 5]), radius: 0.4, mode: 'paint' })
+    expect(b.bounds()).toEqual([5, 5, 1, 1])
+  })
+
+  it('wraps a painted span', () => {
+    const b = new MaskBuffer(10, 10)
+    b.apply({ points: new Float32Array([2, 3, 6, 3]), radius: 0.4, mode: 'paint' })
+    const [x, y, w, h] = b.bounds()
+    expect([x, y]).toEqual([2, 3])
+    expect(w).toBe(5)
+    expect(h).toBe(1)
+  })
+})
+
+describe('MaskBuffer isEmpty', () => {
+  it('is empty before painting', () => {
+    expect(new MaskBuffer(8, 8).isEmpty()).toBe(true)
+  })
+
+  it('is not empty after painting', () => {
+    const b = new MaskBuffer(8, 8)
+    b.apply({ points: new Float32Array([4, 4]), radius: 1, mode: 'paint' })
+    expect(b.isEmpty()).toBe(false)
+  })
+
+  it('is empty again once everything is erased', () => {
+    const b = new MaskBuffer(8, 8)
+    b.apply({ points: new Float32Array([4, 4]), radius: 1, mode: 'paint' })
+    b.apply({ points: new Float32Array([4, 4]), radius: 3, mode: 'erase' })
+    expect(b.isEmpty()).toBe(true)
+  })
+})
+
+describe('MaskBuffer version', () => {
+  it('changes on paint and on undo so caches can invalidate', () => {
+    const b = new MaskBuffer(8, 8)
+    const v0 = b.version
+    b.apply({ points: new Float32Array([1, 1]), radius: 1, mode: 'paint' })
+    const v1 = b.version
+    b.undo()
+    const v2 = b.version
+    expect(v1).not.toBe(v0)
+    expect(v2).not.toBe(v1)
+  })
+})

@@ -54,6 +54,8 @@
  * See spec sections 6.3 and 6.4.
  */
 
+import type { BBox } from './types'
+
 export interface Stroke {
   /** Flat `[x, y, x, y, ...]` in image space. */
   points: Float32Array
@@ -89,6 +91,13 @@ export class MaskBuffer {
    */
   lastReplayCount = 0
 
+  /**
+   * Bumped on every change. The mask layer caches an offscreen bitmap keyed on
+   * this, so it re-tints pixels only when they actually changed rather than on
+   * every frame.
+   */
+  version = 0
+
   constructor(width: number, height: number) {
     this.width = width
     this.height = height
@@ -107,6 +116,7 @@ export class MaskBuffer {
   apply(s: Stroke): void {
     this.strokes.push(s)
     this.rasterize(s)
+    this.version++
 
     if (this.strokes.length % MaskBuffer.SNAPSHOT_INTERVAL === 0) {
       this.snapshots.push({ index: this.strokes.length, data: this.data.slice() })
@@ -122,6 +132,7 @@ export class MaskBuffer {
     }
     this.strokes.pop()
     this.rebuild()
+    this.version++
   }
 
   /** Replace the entire history, used when loading a mask from the server. */
@@ -129,6 +140,40 @@ export class MaskBuffer {
     this.strokes = strokes.slice()
     this.snapshots = []
     this.rebuild()
+    this.version++
+  }
+
+  /**
+   * Tight bounding box around the filled pixels.
+   *
+   * Every annotation carries a bbox regardless of shape type, because training
+   * pipelines expect one and should not have to decode an RLE to find it.
+   * Returns a zero box when nothing is painted.
+   */
+  bounds(): BBox {
+    let minX = Infinity
+    let minY = Infinity
+    let maxX = -1
+    let maxY = -1
+
+    for (let y = 0; y < this.height; y++) {
+      const row = y * this.width
+      for (let x = 0; x < this.width; x++) {
+        if (this.data[row + x] === 0) continue
+        if (x < minX) minX = x
+        if (x > maxX) maxX = x
+        if (y < minY) minY = y
+        if (y > maxY) maxY = y
+      }
+    }
+
+    if (maxX < 0) return [0, 0, 0, 0]
+    return [minX, minY, maxX - minX + 1, maxY - minY + 1]
+  }
+
+  /** True when no pixel is set. Used to discard an annotation erased to nothing. */
+  isEmpty(): boolean {
+    return !this.data.some((v) => v !== 0)
   }
 
   /**
