@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { MousePointer2, Square, PenTool, Brush, Eraser, Undo2, Redo2, Download } from 'lucide-react'
 import { commandStack, useStore } from '@/lib/state/store'
 import type { ToolId } from '@/lib/canvas/types'
+import { downloadExport } from '@/lib/export/download'
 
 const TOOLS: Array<{ id: ToolId; icon: typeof Square; label: string; key: string }> = [
   { id: 'select', icon: MousePointer2, label: 'Select', key: 'V' },
@@ -15,6 +16,7 @@ const TOOLS: Array<{ id: ToolId; icon: typeof Square; label: string; key: string
 
 export function Toolbar() {
   const tool = useStore((s) => s.tool)
+  const annotationCount = useStore((s) => s.annotationIds.length)
   const setTool = useStore((s) => s.setTool)
 
   // the command stack lives outside the store, so subscribe to it directly
@@ -59,8 +61,10 @@ export function Toolbar() {
       </button>
 
       <button
+        onClick={downloadExport}
+        disabled={annotationCount === 0}
         title="Export JSON"
-        className="ml-auto flex h-7 items-center gap-1.5 rounded bg-[var(--color-accent)] px-2.5 text-[11px] font-medium text-black transition hover:brightness-110"
+        className="ml-auto flex h-7 items-center gap-1.5 rounded bg-[var(--color-accent)] px-2.5 text-[11px] font-medium text-black transition hover:brightness-110 disabled:opacity-30 disabled:hover:brightness-100"
       >
         <Download size={13} strokeWidth={2} />
         Export
