@@ -4,13 +4,18 @@ import { useEffect, type RefObject } from 'react'
 import type { Renderer, DrawFn } from '@/lib/canvas/renderer'
 import type { Tool, ToolContext } from '@/lib/canvas/tools/types'
 import { createBoxTool } from '@/lib/canvas/tools/box-tool'
+import { createSelectTool } from '@/lib/canvas/tools/select-tool'
+import { createPolygonTool } from '@/lib/canvas/tools/polygon-tool'
+import { SpatialIndex } from '@/lib/canvas/hit-test'
 import { screenToImage } from '@/lib/canvas/transform'
-import { commandStack, useStore } from '@/lib/state/store'
+import { commandStack, selectVisibleAnnotations, useStore } from '@/lib/state/store'
 import type { ToolId } from '@/lib/canvas/types'
 
-/** Which tools are implemented so far. Polygon, brush and erase land next. */
+/** Which tools are implemented so far. Brush and erase land next. */
 function makeTool(id: ToolId): Tool | null {
   if (id === 'box') return createBoxTool()
+  if (id === 'select') return createSelectTool()
+  if (id === 'polygon') return createPolygonTool()
   return null
 }
 
@@ -33,6 +38,20 @@ export function useTools(
     let tool = makeTool(useStore.getState().tool)
     let spaceDown = false
 
+    // Spatial grid for hit testing, rebuilt whenever the shape list changes.
+    // Rebuilding on change rather than per query means a hover test inspects
+    // only the shapes near the cursor. See spec 5.4.
+    let index = new SpatialIndex(1, 1)
+
+    function rebuildIndex() {
+      const s = useStore.getState()
+      const img = s.activeImageId ? s.images[s.activeImageId] : null
+      index = new SpatialIndex(img?.width ?? 1, img?.height ?? 1)
+      index.rebuild(selectVisibleAnnotations(s))
+    }
+
+    rebuildIndex()
+
     const ctx: ToolContext = {
       toImage(e) {
         const rect = el.getBoundingClientRect()
@@ -48,6 +67,9 @@ export function useTools(
       },
       invalidate(...layers) {
         rendererRef.current?.invalidate(...layers)
+      },
+      hitTest(p) {
+        return index.hitTest(p.x, p.y)
       },
     }
 
@@ -89,6 +111,10 @@ export function useTools(
     function onKeyDown(e: KeyboardEvent) {
       if (isTyping(e.target)) return
 
+      // the active tool sees keys first: a polygon in progress needs Enter and
+      // Escape before any global shortcut claims them
+      if (tool?.onKeyDown?.(e, ctx)) return
+
       if (e.code === 'Space') {
         spaceDown = true
         tool?.cancel?.(ctx)
@@ -127,6 +153,15 @@ export function useTools(
       applyCursor()
     }
 
+    let lastAnnotations = useStore.getState().annotations
+    let lastImageId = useStore.getState().activeImageId
+    const unsubIndex = useStore.subscribe((s) => {
+      if (s.annotations === lastAnnotations && s.activeImageId === lastImageId) return
+      lastAnnotations = s.annotations
+      lastImageId = s.activeImageId
+      rebuildIndex()
+    })
+
     // swap tools without leaving a half-finished gesture behind
     const unsubTool = useStore.subscribe((s) => {
       if (s.tool === tool?.id) return
@@ -150,6 +185,7 @@ export function useTools(
       window.removeEventListener('keydown', onKeyDown)
       window.removeEventListener('keyup', onKeyUp)
       unsubTool()
+      unsubIndex()
     }
   }, [ref, rendererRef, previewRef])
 }
