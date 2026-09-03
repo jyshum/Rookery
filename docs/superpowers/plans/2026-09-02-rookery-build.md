@@ -1845,8 +1845,13 @@ justifies the fourth layer, so leave a comment saying so.
 Close the polygon on `Enter`, on double click, or on clicking within 8 screen pixels of the
 first vertex. Reject polygons with fewer than 3 vertices. `Escape` cancels.
 
-On close: run `simplify(points, 1.0)`, compute `bboxFromPoints`, and commit through the
-command stack the same way the box tool does.
+On close: compute `bboxFromPoints` and commit through the command stack the same way the
+box tool does.
+
+**Do not run `simplify()` here.** Polygon vertices are click-placed, so every one was a
+deliberate human decision. Simplification would silently delete a vertex the user placed
+whenever three clicks land near-collinear, which reads as a bug. Simplify what a timer
+sampled, never what a person clicked. Brush paths get simplified (Task 18); polygons do not.
 
 - [ ] **Step 2: Manual verification**
 
