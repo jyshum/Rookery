@@ -8,6 +8,8 @@ import { useStore } from '@/lib/state/store'
 import { SAMPLE_IMAGES } from '@/lib/samples'
 import { BUILT_IN_CLASSES } from '@/lib/classes'
 import { Toolbar } from '@/components/panels/Toolbar'
+import { ClassPanel } from '@/components/panels/ClassPanel'
+import { AttributePanel } from '@/components/panels/AttributePanel'
 
 export default function Workspace() {
   // temporary: seeded locally until the backend lands in Task 22
@@ -38,9 +40,13 @@ export default function Workspace() {
         <main className="min-w-0 flex-1">
           <CanvasStage />
         </main>
-        <aside className="w-[260px] shrink-0 border-l border-[var(--color-line)] bg-[var(--color-panel)]">
-          <div className="border-b border-[var(--color-line)] px-3 py-3">
-            <p className="eyebrow">Class</p>
+        <aside className="flex w-[260px] shrink-0 flex-col overflow-y-auto border-l border-[var(--color-line)] bg-[var(--color-panel)]">
+          <ClassPanel />
+          <div className="border-t border-[var(--color-line)]">
+            <div className="border-b border-[var(--color-line)] px-3 py-3">
+              <p className="eyebrow">Attributes</p>
+            </div>
+            <AttributePanel />
           </div>
         </aside>
       </div>

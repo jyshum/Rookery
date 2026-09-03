@@ -10,6 +10,7 @@ import { createBrushTool } from '@/lib/canvas/tools/brush-tool'
 import { SpatialIndex } from '@/lib/canvas/hit-test'
 import { screenToImage } from '@/lib/canvas/transform'
 import { commandStack, selectVisibleAnnotations, useStore } from '@/lib/state/store'
+import { changeClassCommand, deleteAnnotationCommand } from '@/lib/state/annotation-commands'
 import type { ToolId } from '@/lib/canvas/types'
 
 function makeTool(id: ToolId): Tool | null {
@@ -138,6 +139,27 @@ export function useTools(
       }
 
       if (mod) return
+
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        const selected = useStore.getState().selectedId
+        if (selected) {
+          e.preventDefault()
+          deleteAnnotationCommand(selected)
+          return
+        }
+      }
+
+      // number keys pick a class by position, matching the panel's badges
+      if (/^[1-9]$/.test(e.key)) {
+        const s = useStore.getState()
+        const id = s.classIds[Number(e.key) - 1]
+        if (id) {
+          e.preventDefault()
+          if (s.selectedId) changeClassCommand(s.selectedId, id)
+          else s.setActiveClass(id)
+        }
+        return
+      }
 
       const byKey: Record<string, ToolId> = {
         v: 'select', b: 'box', p: 'polygon', d: 'brush', e: 'erase',
