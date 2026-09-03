@@ -46,3 +46,14 @@ body {
   background-clip: text;
   color: transparent;
 }
+
+/* Export preview syntax colouring */
+.json-preview {
+  font-family: var(--font-mono);
+  color: #9aa4b2;
+  white-space: pre;
+}
+.json-preview .jk { color: #38bdf8; }  /* keys */
+.json-preview .js { color: #14b8a6; }  /* strings */
+.json-preview .jn { color: #fbbf24; }  /* numbers */
+.json-preview .jl { color: #a78bfa; }  /* true / false / null */
