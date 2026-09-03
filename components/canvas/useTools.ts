@@ -113,6 +113,8 @@ export function useTools(
 
     function onKeyDown(e: KeyboardEvent) {
       if (isTyping(e.target)) return
+      // the export drawer owns the keyboard while it is open
+      if (useStore.getState().exportOpen) return
 
       // the active tool sees keys first: a polygon in progress needs Enter and
       // Escape before any global shortcut claims them

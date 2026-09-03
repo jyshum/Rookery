@@ -10,6 +10,7 @@ import { BUILT_IN_CLASSES } from '@/lib/classes'
 import { Toolbar } from '@/components/panels/Toolbar'
 import { ClassPanel } from '@/components/panels/ClassPanel'
 import { AttributePanel } from '@/components/panels/AttributePanel'
+import { ExportDrawer } from '@/components/panels/ExportDrawer'
 
 export default function Workspace() {
   // temporary: seeded locally until the backend lands in Task 22
@@ -35,7 +36,7 @@ export default function Workspace() {
 
       <Toolbar />
 
-      <div className="flex min-h-0 flex-1">
+      <div className="relative flex min-h-0 flex-1">
         <ImageRail />
         <main className="min-w-0 flex-1">
           <CanvasStage />
@@ -49,6 +50,8 @@ export default function Workspace() {
             <AttributePanel />
           </div>
         </aside>
+
+        <ExportDrawer />
       </div>
 
       <StatusBar />
