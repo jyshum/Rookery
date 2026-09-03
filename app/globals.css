@@ -1,0 +1,48 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg:      #0A0A0B;
+  --color-panel:   #080d14;
+  --color-deep:    #050505;
+  --color-primary: #006495;
+  --color-accent:  #14B8A6;
+  --color-surface: rgba(255, 255, 255, 0.05);
+  --color-line:    rgba(255, 255, 255, 0.10);
+  --color-text:    #F3F4F6;
+  --color-muted:   #6B7280;
+
+  --font-display: var(--font-lora), Georgia, serif;
+  --font-mono:    var(--font-jb), ui-monospace, monospace;
+}
+
+html,
+body {
+  height: 100%;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-mono);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Corvinus signature: faint engineering grid */
+.grid-overlay {
+  background-image:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+/* Corvinus signature: small tracked uppercase label */
+.eyebrow {
+  font-size: 10px;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  color: var(--color-muted);
+}
+
+.gradient-text {
+  background: linear-gradient(to right, #006495, #14b8a6);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
