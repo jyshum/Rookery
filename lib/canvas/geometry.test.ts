@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest'
-import { bboxFromPoints, bboxFromBox, pointInPolygon, distToSegment } from './geometry'
+import {
+  bboxFromPoints,
+  bboxFromBox,
+  pointInPolygon,
+  distToSegment,
+  translateGeometry,
+  translateBBox,
+  isMovable,
+} from './geometry'
 
 describe('bboxFromPoints', () => {
   it('returns x, y, w, h covering all points', () => {
@@ -52,5 +60,52 @@ describe('distToSegment', () => {
 
   it('handles a zero-length segment', () => {
     expect(distToSegment(3, 4, 0, 0, 0, 0)).toBeCloseTo(5)
+  })
+})
+
+describe('translateGeometry', () => {
+  it('offsets a box', () => {
+    const g = translateGeometry({ kind: 'box', x: 10, y: 20, w: 30, h: 40 }, 5, -5)
+    expect(g).toEqual({ kind: 'box', x: 15, y: 15, w: 30, h: 40 })
+  })
+
+  it('offsets every polygon vertex', () => {
+    const g = translateGeometry(
+      { kind: 'polygon', points: new Float32Array([0, 0, 10, 0, 10, 10]) },
+      3,
+      7,
+    )
+    expect(g.kind).toBe('polygon')
+    if (g.kind === 'polygon') {
+      expect(Array.from(g.points)).toEqual([3, 7, 13, 7, 13, 17])
+    }
+  })
+
+  it('does not mutate the original polygon', () => {
+    const pts = new Float32Array([0, 0, 10, 0])
+    translateGeometry({ kind: 'polygon', points: pts }, 5, 5)
+    expect(Array.from(pts)).toEqual([0, 0, 10, 0])
+  })
+
+  it('returns a mask unchanged', () => {
+    const mask = { kind: 'mask' as const, rle: [1, 2, 3], width: 4, height: 4 }
+    expect(translateGeometry(mask, 10, 10)).toBe(mask)
+  })
+})
+
+describe('isMovable', () => {
+  it('allows boxes and polygons', () => {
+    expect(isMovable({ kind: 'box', x: 0, y: 0, w: 1, h: 1 })).toBe(true)
+    expect(isMovable({ kind: 'polygon', points: new Float32Array([0, 0]) })).toBe(true)
+  })
+
+  it('refuses masks', () => {
+    expect(isMovable({ kind: 'mask', rle: [], width: 1, height: 1 })).toBe(false)
+  })
+})
+
+describe('translateBBox', () => {
+  it('offsets position but not size', () => {
+    expect(translateBBox([10, 20, 30, 40], -5, 5)).toEqual([5, 25, 30, 40])
   })
 })

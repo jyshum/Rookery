@@ -1,4 +1,4 @@
-import type { BBox } from './types'
+import type { BBox, Geometry } from './types'
 
 /** Tight bounding box around a flat `[x, y, x, y, ...]` point list. */
 export function bboxFromPoints(pts: Float32Array): BBox {
@@ -72,4 +72,38 @@ export function distToSegment(
   t = Math.max(0, Math.min(1, t))
 
   return Math.hypot(px - (ax + t * dx), py - (ay + t * dy))
+}
+
+/**
+ * Offset a shape by a delta in image space.
+ *
+ * Masks are returned unchanged. A mask's pixels are baked at absolute
+ * positions, so moving one means re-rasterizing and re-encoding the whole
+ * thing. Dragging a painted region is not a workflow this tool supports, and
+ * silently producing a wrong mask would be worse than not moving it.
+ */
+export function translateGeometry(g: Geometry, dx: number, dy: number): Geometry {
+  if (g.kind === 'box') {
+    return { kind: 'box', x: g.x + dx, y: g.y + dy, w: g.w, h: g.h }
+  }
+
+  if (g.kind === 'polygon') {
+    const next = new Float32Array(g.points.length)
+    for (let i = 0; i < g.points.length; i += 2) {
+      next[i] = g.points[i] + dx
+      next[i + 1] = g.points[i + 1] + dy
+    }
+    return { kind: 'polygon', points: next }
+  }
+
+  return g
+}
+
+/** True when a shape can be dragged. Masks cannot. See `translateGeometry`. */
+export function isMovable(g: Geometry): boolean {
+  return g.kind !== 'mask'
+}
+
+export function translateBBox(b: BBox, dx: number, dy: number): BBox {
+  return [b[0] + dx, b[1] + dy, b[2], b[3]]
 }
