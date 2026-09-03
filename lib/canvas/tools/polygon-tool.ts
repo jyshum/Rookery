@@ -1,6 +1,6 @@
 import { bboxFromPoints } from '../geometry'
 import { inImageSpace } from '../layers/interaction-layer'
-import { defaultAttributes } from './box-tool'
+import { defaultAttributes } from '@/lib/classes'
 import type { Tool, ToolContext } from './types'
 import type { Annotation } from '../types'
 import { commandStack, useStore } from '@/lib/state/store'

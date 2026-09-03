@@ -3,6 +3,7 @@ import { drawBoxPreview } from '../layers/interaction-layer'
 import type { Tool } from './types'
 import { commandStack, useStore } from '@/lib/state/store'
 import type { Annotation } from '../types'
+import { defaultAttributes } from '@/lib/classes'
 
 /** Ignore accidental click-drags smaller than this, in image pixels. */
 const MIN_SIZE = 3
@@ -95,20 +96,4 @@ function commitBox(bbox: [number, number, number, number]): void {
     do: () => useStore.getState().addAnnotation(annotation),
     undo: () => useStore.getState().removeAnnotation(annotation.id),
   })
-}
-
-/**
- * Seed an annotation with its class's declared defaults, so a Reagent Bottle
- * arrives already saying "Closed, 100%" rather than blank. An unset attribute
- * and a deliberately-zero one are different facts, and the dataset should not
- * conflate them.
- */
-export function defaultAttributes(
-  defs: Array<{ name: string; defaultValue?: string | number | boolean }>,
-): Record<string, string | number | boolean> {
-  const out: Record<string, string | number | boolean> = {}
-  for (const d of defs) {
-    if (d.defaultValue !== undefined) out[d.name] = d.defaultValue
-  }
-  return out
 }
