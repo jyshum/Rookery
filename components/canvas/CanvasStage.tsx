@@ -11,6 +11,7 @@ import {
 } from '@/lib/canvas/renderer'
 import { drawImageLayer, loadBitmap } from '@/lib/canvas/layers/image-layer'
 import { drawVectorLayer } from '@/lib/canvas/layers/vector-layer'
+import { drawMaskLayer } from '@/lib/canvas/layers/mask-layer'
 import { fitToContainer } from '@/lib/canvas/transform'
 import { selectVisibleAnnotations, useStore } from '@/lib/state/store'
 import { useViewportControls } from './useViewportControls'
@@ -78,6 +79,11 @@ export function CanvasStage() {
 
       renderer.setDraw('image', (ctx) => {
         drawImageLayer(ctx, bitmapRef.current, useStore.getState().viewport)
+      })
+
+      renderer.setDraw('mask', (ctx) => {
+        const s = useStore.getState()
+        drawMaskLayer(ctx, selectVisibleAnnotations(s), s.classes, s.viewport)
       })
 
       renderer.setDraw('vector', (ctx) => {
@@ -158,7 +164,7 @@ export function CanvasStage() {
       if (s.annotations === lastAnnotations && s.selectedId === lastSelected) return
       lastAnnotations = s.annotations
       lastSelected = s.selectedId
-      rendererRef.current?.invalidate('vector')
+      rendererRef.current?.invalidate('vector', 'mask')
     })
 
     return () => {

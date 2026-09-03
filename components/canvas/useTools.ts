@@ -6,16 +6,18 @@ import type { Tool, ToolContext } from '@/lib/canvas/tools/types'
 import { createBoxTool } from '@/lib/canvas/tools/box-tool'
 import { createSelectTool } from '@/lib/canvas/tools/select-tool'
 import { createPolygonTool } from '@/lib/canvas/tools/polygon-tool'
+import { createBrushTool } from '@/lib/canvas/tools/brush-tool'
 import { SpatialIndex } from '@/lib/canvas/hit-test'
 import { screenToImage } from '@/lib/canvas/transform'
 import { commandStack, selectVisibleAnnotations, useStore } from '@/lib/state/store'
 import type { ToolId } from '@/lib/canvas/types'
 
-/** Which tools are implemented so far. Brush and erase land next. */
 function makeTool(id: ToolId): Tool | null {
   if (id === 'box') return createBoxTool()
   if (id === 'select') return createSelectTool()
   if (id === 'polygon') return createPolygonTool()
+  if (id === 'brush') return createBrushTool('paint')
+  if (id === 'erase') return createBrushTool('erase')
   return null
 }
 
