@@ -1,0 +1,120 @@
+// Rookery data model.
+//
+// Two design notes worth naming:
+//
+// 1. Geometry, bbox and attributes are JSONB rather than normalised columns.
+//    Different classes genuinely declare different attributes, and three shape
+//    types have three different structures, neither of which a fixed column
+//    layout can express. JSONB keeps that flexibility without giving up
+//    queryability: `where attributes->>'State' = 'Open'` still works and can be
+//    GIN-indexed.
+//
+// 2. Annotation ids are supplied by the client, not generated here. Drawing
+//    must not wait on a round trip, so a shape gets its id the moment it is
+//    created and the server upserts against it. That also makes a retried sync
+//    idempotent instead of producing duplicates.
+
+// Prisma 7 moved connection URLs out of the schema. The migration URL lives in
+// prisma.config.ts; the runtime URL is handed to PrismaClient through a driver
+// adapter. See lib/db/prisma.ts.
+datasource db {
+  provider = "postgresql"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+/// One annotation session. Scoped per browser rather than per user: no auth,
+/// and no way for two people to write over each other's work.
+model Project {
+  id        String       @id @default(cuid())
+  name      String
+  createdAt DateTime     @default(now())
+  images    ImageAsset[]
+  classes   LabelClass[]
+}
+
+model ImageAsset {
+  id          String       @id @default(cuid())
+  projectId   String
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  filename    String
+  source      ImageSource  @default(UPLOADED)
+  url         String
+  width       Int
+  height      Int
+  order       Int          @default(0)
+  createdAt   DateTime     @default(now())
+  annotations Annotation[]
+
+  @@index([projectId])
+}
+
+/// Declares which questions get asked about every instance of itself.
+model LabelClass {
+  id          String         @id @default(cuid())
+  projectId   String
+  project     Project        @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  key         String
+  name        String
+  color       String
+  isBuiltIn   Boolean        @default(false)
+  order       Int            @default(0)
+  attributes  AttributeDef[]
+  annotations Annotation[]
+
+  @@unique([projectId, key])
+  @@index([projectId])
+}
+
+model AttributeDef {
+  id           String     @id @default(cuid())
+  labelClassId String
+  labelClass   LabelClass @relation(fields: [labelClassId], references: [id], onDelete: Cascade)
+  key          String
+  name         String
+  type         AttrType
+  options      Json?
+  defaultValue Json?
+  order        Int        @default(0)
+
+  @@index([labelClassId])
+}
+
+/// Holds the answers. `id` comes from the client; see the note at the top.
+model Annotation {
+  id           String         @id
+  imageId      String
+  image        ImageAsset     @relation(fields: [imageId], references: [id], onDelete: Cascade)
+  labelClassId String
+  labelClass   LabelClass     @relation(fields: [labelClassId], references: [id], onDelete: Cascade)
+  type         AnnotationType
+  geometry     Json
+  bbox         Json
+  attributes   Json           @default("{}")
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@index([imageId])
+  @@index([labelClassId])
+}
+
+enum ImageSource {
+  BUNDLED
+  UPLOADED
+}
+
+enum AnnotationType {
+  BOX
+  POLYGON
+  MASK
+}
+
+enum AttrType {
+  NUMBER
+  PERCENT
+  ENUM
+  BOOLEAN
+  TEXT
+}
