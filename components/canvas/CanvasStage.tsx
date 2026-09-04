@@ -23,7 +23,7 @@ import { useTools } from './useTools'
  * React mounts this component once and then stays out of the way. The render
  * loop reads the store through an imperative subscription rather than through
  * hooks, so a pointer move repaints a canvas without ever re-rendering React.
- * See spec 6.2.
+ *
  *
  * Only the top canvas receives pointer events; the three beneath it are inert.
  */

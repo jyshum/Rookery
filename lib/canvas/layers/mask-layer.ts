@@ -14,16 +14,10 @@ interface CacheEntry {
 /**
  * Painted brush masks.
  *
- * ---------------------------------------------------------------------------
- * WHY THE TINTED BITMAP IS CACHED
- * ---------------------------------------------------------------------------
- * A mask is one byte per pixel; the canvas needs four, tinted with the class
- * colour. On a 1600x1067 image that is a 6.8 MB conversion. Doing it per frame
- * would make painting unusable.
- *
- * So each annotation keeps an offscreen canvas, rebuilt only when the buffer's
- * version changes or its class colour does. Panning, zooming and drawing on a
- * different shape all reuse it untouched.
+ * A mask is one byte per pixel and the canvas needs four, tinted with the class
+ * colour. On a 1600x1067 image that conversion is 6.8 MB, so each annotation
+ * keeps an offscreen canvas that is only rebuilt when the buffer version or the
+ * class colour changes. Panning and zooming reuse it untouched.
  */
 const cache = new Map<string, CacheEntry>()
 

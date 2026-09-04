@@ -9,47 +9,25 @@ export type LayerContexts = Record<LayerName, CanvasRenderingContext2D>
 export type RepaintCounts = Record<LayerName, number>
 
 /**
- * Dirty-flag renderer over four stacked canvases.
+ * Draws the four stacked canvases, repainting only what changed.
  *
- * ---------------------------------------------------------------------------
- * WHY FOUR CANVASES
- * ---------------------------------------------------------------------------
- * A canvas is one flat surface with no notion of layers, so changing anything
- * means clearing and redrawing all of it. On a single canvas, dragging a
- * polygon's rubber band would mean redrawing the photo and every finished
- * shape, sixty times a second, to move one line.
+ * Layers are split by how long their contents live:
  *
- * The split is by LIFETIME, not by tool:
+ *   image        the photo               pan, zoom, image switch
+ *   mask         painted pixels          a committed stroke
+ *   vector       finished shapes         a shape added, moved, deleted
+ *   interaction  previews and cursors    every frame, on an empty surface
  *
- *   image        the photo               changes on pan, zoom, image switch
- *   mask         painted pixels          changes while a brush stroke is live
- *   vector       finished boxes/polygons changes when a shape is committed
- *   interaction  rubber band, cursor,    changes every frame, but the surface
- *                hover, drag preview     is nearly empty so it costs nothing
+ * A canvas has no layers of its own, so any change means clearing and redrawing
+ * everything on it. Keeping previews separate means dragging a polygon's rubber
+ * band never touches the photo or the 30 shapes already drawn.
  *
- * With 30 polygons on screen, moving the rubber band on a shared canvas is
- * ~1,800 polygon redraws per second. On its own layer it is one line on an
- * empty surface, and the 30 polygons are never touched.
+ * Invalidation only marks a layer dirty. The repaint happens once per animation
+ * frame however many events arrived, so a 120Hz pointer cannot cause 120 paints.
  *
- * Principle: temporary things change every frame, permanent things almost
- * never do. Sharing a canvas makes you pay the permanent cost at the temporary
- * frequency. See spec sections 5.2 and 5.3.
- *
- * ---------------------------------------------------------------------------
- * WHY rAF BATCHING
- * ---------------------------------------------------------------------------
- * Pointer events fire faster than the display refreshes, and on a 120Hz mouse
- * far faster. Painting per event does redundant work that is never shown.
- * Invalidation only marks a layer dirty; the actual repaint happens once per
- * animation frame, no matter how many events arrived.
- *
- * ---------------------------------------------------------------------------
- * TRANSFORM CONTRACT
- * ---------------------------------------------------------------------------
- * Every draw function receives a context already scaled for devicePixelRatio,
- * so it can work in CSS pixels and ignore retina entirely. Draw functions apply
- * the viewport with RELATIVE transforms (translate/scale) so they compose with
- * that baseline. They must never call setTransform, which would discard it.
+ * Draw functions get a context already scaled for devicePixelRatio, so they work
+ * in CSS pixels. They apply the viewport with translate/scale, never setTransform,
+ * which would discard that scaling.
  */
 export class Renderer {
   private dirty = new Set<LayerName>()

@@ -5,14 +5,9 @@ import type { Annotation } from './types'
 /**
  * Live mask bitmaps, keyed by annotation id.
  *
- * Deliberately outside the Zustand store. The store holds what gets persisted
- * and exported, which for a mask is its run-length encoding. A MaskBuffer is
- * the working representation: several megabytes of pixels plus a stroke
- * history, none of which should be diffed by a state library or copied on
- * every render.
- *
- * The store stays the source of truth for the data; this is the source of
- * truth for the pixels.
+ * Kept outside the store. The store holds what gets saved and exported, which for
+ * a mask is its run-length encoding. A MaskBuffer is megabytes of pixels plus
+ * stroke history, and a state library should not be diffing that.
  */
 const buffers = new Map<string, MaskBuffer>()
 

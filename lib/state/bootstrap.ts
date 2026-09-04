@@ -8,28 +8,16 @@ import { primeSync, startSync } from './sync'
 const STORAGE_KEY = 'rookery.projectId'
 
 /**
- * Load the workspace.
+ * Loads the workspace on startup.
  *
- * ---------------------------------------------------------------------------
- * WHY THE PROJECT ID LIVES IN localStorage
- * ---------------------------------------------------------------------------
- * There is no authentication, so a single shared project would let any visitor
- * overwrite anyone else's annotations. Scoping a project to the browser gives
- * every visitor their own workspace with no login, and makes it impossible for
- * one person to clobber another mid-demo.
+ * Each browser gets its own project, with the id kept in localStorage. There is
+ * no login, so a single shared project would let any visitor overwrite someone
+ * else's work. Clearing site data loses the project; accounts would be the fix if
+ * a dataset ever needs to be shared between machines.
  *
- * The tradeoff is honest and worth stating: clear your site data and the
- * project becomes unreachable. Real accounts are the answer if this ever needs
- * to be shared between machines.
- *
- * ---------------------------------------------------------------------------
- * WHY FAILURE IS NOT FATAL
- * ---------------------------------------------------------------------------
- * If the API is unreachable or no database is configured, the app falls back to
- * seeded in-memory data and keeps working. Every tool, the class registry and
- * the export all function; the only thing lost is durability across a refresh.
- * A labeling tool that refuses to open because a database is missing is worse
- * than one that forgets.
+ * If the API is unreachable the app falls back to seeded in-memory data and keeps
+ * working. Only durability is lost. A labeling tool that refuses to open because
+ * a database is missing is worse than one that forgets.
  */
 export async function bootstrap(): Promise<void> {
   const stored = readStoredId()

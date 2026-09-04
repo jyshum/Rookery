@@ -9,10 +9,9 @@
 //    queryability: `where attributes->>'State' = 'Open'` still works and can be
 //    GIN-indexed.
 //
-// 2. Annotation ids are supplied by the client, not generated here. Drawing
-//    must not wait on a round trip, so a shape gets its id the moment it is
-//    created and the server upserts against it. That also makes a retried sync
-//    idempotent instead of producing duplicates.
+// 2. Annotation ids come from the client. Drawing should not wait on a round
+//    trip, so a shape gets its id as soon as it is created and the server
+//    upserts against it. This also makes a retried sync safe to repeat.
 
 // Prisma 7 moved connection URLs out of the schema. The migration URL lives in
 // prisma.config.ts; the runtime URL is handed to PrismaClient through a driver

@@ -1,57 +1,14 @@
 /**
- * Rasterized brush mask, plus the stroke history that produced it.
+ * The painted mask, plus the strokes that produced it.
  *
- * ---------------------------------------------------------------------------
- * WHY THIS CLASS EXISTS
- * ---------------------------------------------------------------------------
- * Undo has to work for the brush, and the obvious approach fails.
+ * Copying the whole mask after every stroke would work but costs too much
+ * memory: one full-HD mask is ~2 MB packed, ~8 MB as RGBA. So a stroke is
+ * stored as the path the cursor took, which is a few kilobytes.
  *
- * The obvious approach is to copy the whole mask after every stroke and swap
- * back on undo. That is fine for boxes and polygons, which are a handful of
- * numbers. It falls apart for a mask: one full-HD mask is ~2 MB packed at a
- * byte per pixel, and ~8 MB as the RGBA that `getImageData()` hands back. Copy
- * that on every stroke and thirty strokes have eaten hundreds of megabytes.
- *
- * So we store the *action*, not the result. A stroke is the path the cursor
- * took plus a radius plus a mode. A few kilobytes.
- *
- * ---------------------------------------------------------------------------
- * WHY UNDO NEEDS A REPLAY AT ALL
- * ---------------------------------------------------------------------------
- * Painting is destructive. Stroke 100 overwrote whatever was underneath it, and
- * that information is gone. There is no layer inside the bitmap to peel off, so
- * undo cannot subtract a stroke. It has to rebuild.
- *
- * Rebuilding from scratch means replaying every remaining stroke:
- *
- *     strokes made      replays on undo     freeze
- *     50                49                  ~100ms
- *     200               199                 ~400ms
- *     500               499                 ~1s
- *
- * An annotator hits undo constantly. A one-second freeze makes the tool feel
- * broken, and it gets worse the longer they work.
- *
- * ---------------------------------------------------------------------------
- * THE FIX, AND ITS COST
- * ---------------------------------------------------------------------------
- * Snapshot the bitmap every SNAPSHOT_INTERVAL strokes. Undo restores the
- * nearest snapshot and replays only from there, so it never replays more than
- * SNAPSHOT_INTERVAL strokes no matter how long the session ran.
- *
- *     snapshot every    memory          replays    verdict
- *     1 stroke          ~830 MB @ 100   0          crashes the tab
- *     20 strokes        ~10 MB          <= 19      chosen
- *     never             ~0              up to 499  1s freeze
- *
- * We trade a bounded amount of memory for a bounded undo time. Drawing forward
- * never replays at all, so painting stays instant either way.
- *
- * Snapshots are stored packed at one byte per pixel, not as RGBA, which is why
- * a full-HD snapshot is ~2 MB rather than ~8 MB. A rolling window of
- * MAX_SNAPSHOTS keeps total snapshot memory flat.
- *
- * See spec sections 6.3 and 6.4.
+ * Painting is destructive, so undo cannot subtract a stroke. It rebuilds by
+ * replaying. Replaying from the start gets slower the longer you work, so we
+ * snapshot the bitmap every SNAPSHOT_INTERVAL strokes and replay only from the
+ * nearest one. That caps undo at 20 replays for about 10 MB of snapshots.
  */
 
 import type { BBox } from './types'

@@ -41,3 +41,12 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# typescript build cache
+tsconfig.tsbuildinfo
+
+# agent tooling and internal planning docs, not needed to run the app
+AGENTS.md
+CLAUDE.md
+.claude/
+docs/

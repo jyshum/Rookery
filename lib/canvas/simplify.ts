@@ -6,7 +6,7 @@ import { distToSegment } from './geometry'
  * A traced outline captures far more points than the shape needs, because the
  * pointer samples on a timer rather than on curvature. Dropping points that sit
  * within `tolerance` of the line between their neighbours shrinks the payload,
- * the render cost, and the export, with no visible change. See spec 5.6.
+ * the render cost, and the export, with no visible change.
  *
  * Iterative rather than recursive so a long freehand stroke cannot blow the
  * call stack.

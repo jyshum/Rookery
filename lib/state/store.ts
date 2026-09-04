@@ -12,46 +12,31 @@ import { CommandStack } from './commands'
 /**
  * Application state.
  *
- * ---------------------------------------------------------------------------
- * WHY NORMALIZED
- * ---------------------------------------------------------------------------
- * Annotations are keyed by id in a flat record rather than nested in arrays.
- * Editing one annotation replaces one entry, so a subscriber that only reads
- * that annotation is the only thing that re-renders. Nesting them would make
- * every edit produce a new array identity and invalidate every consumer.
+ * Annotations are keyed by id in a flat record, so editing one replaces one entry
+ * and only its readers re-render.
  *
- * ---------------------------------------------------------------------------
- * WHY REACT DOES NOT OWN THE CANVAS
- * ---------------------------------------------------------------------------
- * React re-renders are the enemy of a 60fps loop. If a pointer move triggered a
- * render, the frame is already lost.
- *
- * So the canvas subscribes to this store directly and repaints imperatively.
- * React renders only the surrounding panels. They share state; they do not
- * share a render cycle. See spec section 6.2.
- *
- * The command stack lives outside the store for the same reason: undo history
- * is not view state, and pushing to it should not re-render anything that did
- * not ask to hear about it.
+ * The canvas subscribes to this store directly and repaints itself instead of
+ * re-rendering. A pointer move that triggered a React render would already have
+ * missed the frame. React renders the panels; an imperative loop drives the canvas.
  */
 
 export interface AppState {
-  // ---- images -------------------------------------------------------------
+  // images
   images: Record<string, ImageAsset>
   imageIds: string[]
   activeImageId: string | null
 
-  // ---- annotations --------------------------------------------------------
+  // annotations
   annotations: Record<string, Annotation>
   annotationIds: string[]
   selectedId: string | null
 
-  // ---- label classes ------------------------------------------------------
+  // label classes
   classes: Record<string, LabelClass>
   classIds: string[]
   activeClassId: string | null
 
-  // ---- ui -----------------------------------------------------------------
+  // ui
   tool: ToolId
   viewport: Viewport
   brushSize: number
@@ -59,7 +44,7 @@ export interface AppState {
   exportOpen: boolean
   projectId: string | null
 
-  // ---- actions ------------------------------------------------------------
+  // actions
   addAnnotation: (a: Annotation) => void
   removeAnnotation: (id: string) => void
   updateAnnotation: (id: string, patch: Partial<Annotation>) => void
@@ -196,12 +181,8 @@ export const useStore = create<AppState>((set) => ({
     }),
 }))
 
-// ---------------------------------------------------------------------------
-// Selectors
-//
-// Named so components subscribe to the narrowest slice they need. Subscribing
-// to the whole store would re-render a panel every time the viewport changed.
-// ---------------------------------------------------------------------------
+// Selectors, so a component subscribes only to the slice it needs. Reading the
+// whole store would re-render a panel every time the viewport changed.
 
 export const selectActiveImage = (s: AppState): ImageAsset | null =>
   s.activeImageId ? (s.images[s.activeImageId] ?? null) : null

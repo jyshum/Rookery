@@ -1,14 +1,14 @@
 import type { Annotation, AttrValue, BBox, Geometry } from '@/lib/canvas/types'
 
 /**
- * Conversion between in-memory shapes and their stored form.
+ * Converts between in-memory shapes and their stored form.
  *
- * Polygon points live in memory as `Float32Array` because that is the right
- * representation for a render loop. JSON has no typed arrays, so the wire form
- * is a flat `number[]`. Flat rather than nested pairs: it is the storage
- * format, not the export format, and the two answer to different consumers.
- * Coupling them would mean a change to the published schema forcing a
- * migration.
+ * Polygon points are a Float32Array in memory because that suits a render loop.
+ * JSON has no typed arrays, so the stored form is a flat number array.
+ *
+ * The storage format is kept separate from the export format on purpose. They
+ * answer to different consumers, and coupling them would mean a change to the
+ * published schema forcing a migration.
  */
 
 export type WireGeometry =

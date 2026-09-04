@@ -17,8 +17,8 @@ import { commandStack, useStore } from './store'
  *
  * Stores the previous value rather than a copy of the annotation, so undoing a
  * slider drag costs a number. Callers are expected to fire this once per
- * gesture, not once per input event, or the undo stack fills with a hundred
- * one-percent steps.
+ * gesture. Firing on every input event would fill the undo stack with a
+ * hundred one-percent steps from a single slider drag.
  */
 export function setAttributeCommand(
   id: string,

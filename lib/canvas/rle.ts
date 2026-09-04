@@ -4,7 +4,7 @@
  * A mask is mostly long stretches of "outside" and "inside", so storing run
  * lengths instead of per-pixel values shrinks it by orders of magnitude. This
  * is the same idea COCO uses, which keeps the export recognizable to anyone
- * who has consumed a segmentation dataset before. See spec 9.
+ * who has consumed a segmentation dataset before.
  *
  * Format: alternating run lengths, row-major, always starting with a run of
  * zeros. A mask whose first pixel is filled therefore starts with a 0.

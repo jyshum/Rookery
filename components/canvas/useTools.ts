@@ -43,7 +43,7 @@ export function useTools(
 
     // Spatial grid for hit testing, rebuilt whenever the shape list changes.
     // Rebuilding on change rather than per query means a hover test inspects
-    // only the shapes near the cursor. See spec 5.4.
+    // only the shapes near the cursor.
     let index = new SpatialIndex(1, 1)
 
     function rebuildIndex() {
@@ -84,7 +84,7 @@ export function useTools(
 
     applyCursor()
 
-    // ---- pointer routing --------------------------------------------------
+    // pointer routing
 
     function onPointerDown(e: PointerEvent) {
       if (spaceDown || e.button === 1 || !tool || !el) return
@@ -103,7 +103,7 @@ export function useTools(
       tool.onPointerUp?.(e, ctx)
     }
 
-    // ---- keyboard ---------------------------------------------------------
+    // keyboard
 
     function isTyping(target: EventTarget | null) {
       const node = target as HTMLElement | null

@@ -1,25 +1,12 @@
 /**
- * Undo and redo via a command stack.
+ * Undo and redo.
  *
- * ---------------------------------------------------------------------------
- * WHY NOT SNAPSHOT THE WHOLE STORE
- * ---------------------------------------------------------------------------
- * The common approach is to deep-copy application state after every edit and
- * swap an old copy back on undo. It is simple and it works right up until the
- * state contains something large.
+ * Each edit is an object that knows how to apply and reverse itself, rather than
+ * a copy of the state before it. Copying works for boxes and polygons but not for
+ * masks, where one 4K bitmap is around 33 MB.
  *
- * Here it does. A painted mask on a 4K image is ~33 MB of raw pixels. Copying
- * that per brush stroke exhausts memory in seconds.
- *
- * So each edit is stored as an object that knows how to apply itself and how to
- * invert itself. Adding a shape stores the shape. Moving a vertex stores the
- * delta. Changing an attribute stores the previous and next value. A brush
- * stroke stores the cursor path, and its inverse is handled by MaskBuffer,
- * which replays from its nearest snapshot.
- *
- * Every one of those is kilobytes, and every one is undoable the same way.
- *
- * See spec section 6.3.
+ * So a move stores its delta, an attribute change stores the old and new value,
+ * and a brush stroke stores the cursor path. All of them are kilobytes.
  */
 
 export interface Command {

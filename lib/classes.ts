@@ -7,7 +7,7 @@ import type { AttributeDef, AttrValue, LabelClass } from '@/lib/canvas/types'
  * the two-level design: each class declares its own attribute schema, so
  * selecting a Reagent Bottle asks about liquid level while selecting a Gloved
  * Hand asks nothing. Users can add classes at runtime; these just mean the tool
- * is useful the moment it opens. See spec 7.
+ * is useful the moment it opens.
  */
 export const BUILT_IN_CLASSES: LabelClass[] = [
   {

@@ -14,33 +14,17 @@ const SIMPLIFY_TOLERANCE = 0.75
 /**
  * Brush and erase.
  *
- * ---------------------------------------------------------------------------
- * WHY A BRUSH AND NOT JUST POLYGONS
- * ---------------------------------------------------------------------------
- * Some things have no outline to click around. A spill has no corners. Neither
- * does liquid in a tube, a gloved hand halfway into frame, or tubing snaking
- * across a bench. Polygon is right for rigid labware; brush is right for
- * everything amorphous. See spec 4.
+ * Some things have no outline to click around. A spill has no corners, and
+ * neither does liquid in a tube or a gloved hand halfway into frame. Polygon
+ * suits rigid labware; brush suits everything else.
  *
- * ---------------------------------------------------------------------------
- * WHY THE LIVE STROKE IS A PREVIEW
- * ---------------------------------------------------------------------------
- * The in-flight stroke is drawn as a stroked path on the interaction layer, and
- * only rasterized into the mask once the pointer lifts. Two reasons:
+ * The live stroke is drawn as a preview and only rasterized into the mask when
+ * the pointer lifts. That makes one gesture one undo step, and it lets erase show
+ * what is about to be removed, which an additive composite cannot.
  *
- *   1. One gesture becomes exactly one undo step. Stamping incrementally would
- *      either produce dozens of undo entries per stroke or need a separate
- *      notion of an open stroke.
- *   2. Erase can be previewed at all. An additive composite cannot show pixels
- *      about to be removed; a distinct preview style can.
- *
- * ---------------------------------------------------------------------------
- * WHY THE PATH IS SIMPLIFIED AND POLYGONS ARE NOT
- * ---------------------------------------------------------------------------
- * Pointer samples arrive on a timer, not on curvature, so most points in a
- * freehand path are jitter. Ramer-Douglas-Peucker removes them with no visible
- * change. Polygon vertices are the opposite: a person clicked each one on
- * purpose. Simplify what a timer recorded, never what a person clicked.
+ * Freehand paths are simplified before storing. The pointer samples on a timer
+ * rather than on curvature, so most of the points are jitter. Polygon vertices
+ * are left alone because a person placed each one on purpose.
  */
 export function createBrushTool(mode: 'paint' | 'erase'): Tool {
   let points: number[] = []
@@ -205,9 +189,9 @@ export function createBrushTool(mode: 'paint' | 'erase'): Tool {
 /**
  * Push one stroke through the command stack.
  *
- * The stroke itself is a few kilobytes of path, not a copy of the mask. Undo
+ * The stroke is a few kilobytes of path. Undo
  * asks the buffer to rebuild from its nearest snapshot, which caps replay cost
- * regardless of how long the session has run. See spec 6.4.
+ * regardless of how long the session has run.
  */
 function commitStroke(id: string, stroke: Stroke, created: boolean): void {
   const s = useStore.getState()

@@ -7,7 +7,7 @@ import { handleError } from '@/lib/db/respond'
  * Projects are scoped per browser rather than per user. There is no auth, so
  * a single shared project would let any visitor overwrite anyone else's work.
  * The client keeps its project id in localStorage and creates one on first
- * visit. See docs/ARCHITECTURE.md section 8.
+ * visit.
  */
 export async function POST() {
   try {

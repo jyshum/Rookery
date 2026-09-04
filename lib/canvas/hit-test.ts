@@ -6,18 +6,14 @@ import { decodeRLE } from './rle'
 const CELL = 128
 
 /**
- * Uniform spatial grid over image space.
+ * Grid index over image space, for finding the shape under the cursor.
  *
- * Naive hit testing checks every annotation on every pointer move. With 200
- * shapes on a photo that is 200 geometry tests per mouse move, sixty times a
- * second, purely to draw a hover outline.
+ * Checking every annotation on every pointer move means 200 geometry tests 60
+ * times a second just to draw a hover outline. Bucketing shapes by the grid cells
+ * their bounding box covers means only nearby shapes get tested.
  *
- * Bucketing shapes by which grid cells their bounding box covers means a hover
- * test only inspects the handful of shapes near the cursor. Cost stays flat as
- * the image fills up.
- *
- * Bounding boxes are the coarse filter; exact geometry is only consulted for
- * the few candidates that survive it. See spec 5.4.
+ * Bounding boxes are the coarse filter. Exact geometry is checked only for the
+ * few candidates that survive it.
  */
 export class SpatialIndex {
   private cells = new Map<number, Annotation[]>()

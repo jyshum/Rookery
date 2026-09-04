@@ -6,30 +6,17 @@ import { useStore, type AppState } from './store'
 const DEBOUNCE_MS = 800
 
 /**
- * Local-first persistence.
+ * Saves annotations to the server in the background.
  *
- * ---------------------------------------------------------------------------
- * THE NETWORK IS NEVER IN THE INTERACTION PATH
- * ---------------------------------------------------------------------------
- * Drawing writes to the store and returns. Nothing awaits a server. You could
- * pull the ethernet cable mid-stroke and the canvas would not stutter; the work
- * simply syncs later.
+ * Drawing writes to the store and returns. Nothing waits on the network, so the
+ * canvas keeps up even with no connection.
  *
- * A background flush runs after 800ms of idle and batches everything that
- * changed into one request per image. A brush stroke can produce dozens of
- * store updates a second, and one request each would be both useless and
- * hostile to the database.
+ * Changes are flushed after 800ms of idle, batched into one request per image. A
+ * brush stroke produces dozens of store updates a second and each one does not
+ * need its own request.
  *
- * Same principle as the canvas layering: keep slow things out of the loop that
- * has to feel instant.
- *
- * ---------------------------------------------------------------------------
- * DEGRADING WITHOUT A BACKEND
- * ---------------------------------------------------------------------------
- * If no project was ever established — no database configured, or the API is
- * unreachable — sync disables itself and the app runs entirely in memory. That
- * is a supported mode, not a broken one: the tool is still fully usable, it
- * just forgets on refresh.
+ * If no project was ever created, because there is no database configured, sync
+ * turns itself off and the app runs in memory.
  */
 
 /** Annotations as last confirmed by the server, for diffing. */
@@ -137,7 +124,7 @@ export async function flush(): Promise<void> {
 
   try {
     // classes first: an annotation referencing an unsaved class violates the
-    // foreign key, so ordering here is correctness, not preference
+    // foreign key, so this order is required
     for (const cls of newClasses) {
       if (!cls) continue
       const res = await fetch(`/api/projects/${projectId}/classes`, {

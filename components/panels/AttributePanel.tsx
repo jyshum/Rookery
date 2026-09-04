@@ -7,19 +7,12 @@ import { deleteAnnotationCommand, setAttributeCommand } from '@/lib/state/annota
 import type { AttributeDef, AttrValue } from '@/lib/canvas/types'
 
 /**
- * Per-annotation attribute editor.
+ * Edits the selected annotation's attributes.
  *
- * ---------------------------------------------------------------------------
- * THE POINT OF THIS PANEL
- * ---------------------------------------------------------------------------
- * It has no knowledge of any specific attribute. There is no branch anywhere
- * for "Liquid Level" or "State". It reads the selected annotation's class,
- * walks that class's declared attribute schema, and renders one control per
- * entry based on its `type` alone.
- *
- * That is what makes a user-defined class work with no code change: invent a
- * class with a "Temperature" number and a "Cap" enum, and the controls appear
- * because the schema says so. See spec 7.
+ * There is no code here for "Liquid Level" or "State" or any other attribute by
+ * name. The panel reads the annotation's class, walks the schema that class
+ * declares, and picks a control from each entry's type. A class invented at
+ * runtime with a Barcode field gets a text input for free.
  */
 export function AttributePanel() {
   const annotation = useStore(selectSelectedAnnotation)

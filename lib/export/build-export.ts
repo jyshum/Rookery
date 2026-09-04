@@ -3,25 +3,15 @@ import type { Annotation, AttrValue, Geometry, ImageAsset, LabelClass } from '@/
 /**
  * Builds the export document.
  *
- * The exported JSON is the actual product of this tool. Everything else exists
- * to produce it, so it is designed and tested rather than serialized ad hoc at
- * the end of a route handler.
+ * The JSON is what this tool produces, so it is designed and tested rather than
+ * serialized at the end of a route handler.
  *
- * Deliberately a pure function with no database or request awareness. That
- * keeps the format under test without standing up a server, and it means the
- * same code path can serve a download or a local preview.
+ * A pure function with no database or request awareness, so the format can be
+ * tested without a server and the same code serves a download or an API response.
  *
- * Two decisions worth noting:
- *
- * 1. Classes are keyed by their stable `key` ("reagent_bottle"), not their
- *    database id. A consumer training a model should not have to care about our
- *    primary keys, and the key survives a reseed.
- *
- * 2. Every annotation carries a `bbox`, including polygons and masks. Detection
- *    pipelines expect one, and computing it here means no consumer has to
- *    reimplement bounding-box math over our geometry formats.
- *
- * See spec section 9.
+ * Classes are keyed by their stable key rather than a database id, and every
+ * annotation carries a bbox even when it is a polygon or a mask, because training
+ * pipelines expect one.
  */
 
 export interface ExportInput {

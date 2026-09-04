@@ -117,11 +117,10 @@ function colorFor(a: Annotation): string {
 }
 
 /**
- * Store the delta, not the resulting shape.
+ * Stores the delta the shape moved by.
  *
  * Undo is then just the opposite delta, which is a handful of bytes rather than
  * a copy of the geometry. Consistent with how every other edit is recorded.
- * See spec 6.3.
  */
 function commitMove(id: string, dx: number, dy: number): void {
   const apply = (ox: number, oy: number) => {

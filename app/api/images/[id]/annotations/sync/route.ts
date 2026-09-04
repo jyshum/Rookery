@@ -6,19 +6,12 @@ import { annotationTypeOf, geometryFromWire } from '@/lib/db/wire'
 /**
  * Batched write for one image.
  *
- * ---------------------------------------------------------------------------
- * WHY UPSERT RATHER THAN CREATE/UPDATE
- * ---------------------------------------------------------------------------
- * Annotation ids are generated on the client, so the server does not know
- * whether a given shape is new. Upserting makes that question irrelevant and
- * makes a retried request idempotent: a sync that times out after committing
- * can be safely re-sent instead of producing duplicates.
+ * Annotation ids come from the client, so the server cannot tell whether a shape
+ * is new. Upserting sidesteps that, and makes a retried request safe: a sync that
+ * times out after committing can be sent again without creating duplicates.
  *
- * ---------------------------------------------------------------------------
- * WHY ONE TRANSACTION
- * ---------------------------------------------------------------------------
- * A dropped connection midway would otherwise leave some shapes saved and
- * others not, with the client believing all of them landed. All or nothing.
+ * One transaction, so a dropped connection cannot leave half the shapes saved
+ * while the client believes all of them landed.
  */
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   try {

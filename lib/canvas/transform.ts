@@ -5,7 +5,7 @@ import type { Point, Viewport } from './types'
  *
  * Pan and zoom are applied as a single canvas transform matrix rather than by
  * recomputing every stored coordinate. Annotation geometry always lives in
- * image space, so zooming never touches the data. See spec 5.4.
+ * image space, so zooming never touches the data.
  */
 
 export function screenToImage(v: Viewport, sx: number, sy: number): Point {

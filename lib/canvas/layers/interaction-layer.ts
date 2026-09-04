@@ -1,16 +1,12 @@
 import type { Viewport } from '../types'
 
 /**
- * Transient feedback: the shape being drawn, the hover outline, the brush ring.
+ * Previews, cursors and hover outlines.
  *
- * Nothing here survives releasing the pointer, which is exactly why it gets its
- * own canvas. A canvas cannot erase one element, only clear and redraw. So a
- * preview sharing the vector layer would force every committed shape to be
- * redrawn on every pointer move: with 30 polygons on screen that is roughly
- * 1,800 polygon redraws per second to move a single line.
- *
- * On its own surface it is one shape on an empty canvas, and the committed
- * shapes are never touched. See spec 5.3.
+ * Nothing here survives releasing the pointer, which is why it has its own
+ * canvas. A canvas cannot erase one element, only clear and redraw, so sharing a
+ * surface with finished shapes would mean redrawing all of them 60 times a second
+ * to animate one line.
  */
 
 const STROKE_PX = 2

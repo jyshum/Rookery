@@ -4,7 +4,7 @@
  * Point data is stored as flat Float32Array (`[x, y, x, y, ...]`) rather than
  * arrays of `{x, y}` objects. One contiguous block instead of thousands of
  * tracked objects: smaller, faster to iterate, and no garbage-collection pauses
- * in the middle of a brush stroke. See spec 5.5.
+ * in the middle of a brush stroke.
  */
 
 export type Point = { x: number; y: number }
@@ -29,7 +29,7 @@ export interface AttributeDef {
 /**
  * A class defines *which* questions get asked. An Annotation holds the answers.
  * That split is what lets a user invent a class at runtime and have the
- * attribute panel adapt with no code change. See spec 7.
+ * attribute panel adapt with no code change.
  */
 export interface LabelClass {
   id: string

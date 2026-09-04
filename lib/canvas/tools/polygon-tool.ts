@@ -13,30 +13,13 @@ const MIN_VERTICES = 3
 /**
  * Polygon tool.
  *
- * ---------------------------------------------------------------------------
- * WHY THIS TOOL JUSTIFIES A SEPARATE INTERACTION LAYER
- * ---------------------------------------------------------------------------
- * While placing vertices, a rubber band follows the cursor from the last point.
- * It moves on every pointer event and never becomes permanent.
+ * While placing vertices a line follows the cursor showing where the next edge
+ * lands. It moves every frame and never becomes permanent, so it is drawn on the
+ * interaction layer. On the vector layer it would force every finished polygon on
+ * the image to be redrawn on every pointer move.
  *
- * A canvas cannot erase one element; you clear it and redraw. So if that line
- * lived on the vector layer, every pointer move would mean clearing and
- * redrawing every finished polygon on the image. With 30 shapes on screen at
- * 60fps that is ~1,800 polygon redraws per second to animate one line.
- *
- * On the interaction layer it is one path on an otherwise empty surface, and
- * the committed shapes are never touched. See spec 5.3.
- *
- * ---------------------------------------------------------------------------
- * WHY VERTICES ARE NOT SIMPLIFIED
- * ---------------------------------------------------------------------------
- * Brush strokes get run through Ramer-Douglas-Peucker because the pointer
- * samples on a timer and most of those points are jitter. Polygon vertices are
- * the opposite: a human clicked each one on purpose. Simplifying them would
- * silently delete a vertex whenever three clicks landed near-collinear, which
- * reads as the tool losing your work.
- *
- * Simplify what a timer recorded. Never simplify what a person clicked.
+ * Vertices are never simplified. A person clicked each one, and dropping one
+ * because three clicks landed nearly in a line looks like lost work.
  */
 export function createPolygonTool(): Tool {
   /** Committed vertices, flat [x, y, ...] in image space. */

@@ -13,7 +13,7 @@ const MIN_SIZE = 3
  *
  * The cheapest annotation to produce and the coarsest. Correct when an
  * annotator only needs to say "the thing is roughly here"; wrong for a
- * diagonal pipette, where the box is mostly empty bench. See spec 4.
+ * diagonal pipette, where the box is mostly empty bench.
  *
  * While dragging, only the interaction layer repaints. The committed shapes and
  * the photo underneath are never touched.
