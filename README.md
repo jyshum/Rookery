@@ -83,14 +83,32 @@ Open http://localhost:3000. Four lab bench photos are bundled, so there is
 something to annotate immediately.
 
 ```bash
-npm test              # 136 tests
+npm test              # 146 tests
 npx tsc --noEmit      # typecheck
 npx eslint .          # lint
 ```
 
-No environment variables are needed. State is held in memory for the session; see
-[Architecture §8](docs/ARCHITECTURE.md#8-what-is-not-built-and-why) for why
-persistence is out of scope.
+### Without a database
+
+It runs. Every tool, the class registry and the export all work; the status bar
+reads **in-memory only** and a refresh clears your annotations. This is a
+supported mode, not a broken one.
+
+### With persistence
+
+Create a Supabase project, then:
+
+```bash
+cp .env.example .env      # fill in DATABASE_URL and DIRECT_URL
+npx prisma migrate dev --name init
+npm run dev
+```
+
+Annotations now survive a refresh, and the status bar reads **saved**.
+
+`.env.example` explains why there are two connection strings and which is which.
+Image upload additionally needs Supabase Storage with a public `lab-images`
+bucket; the bundled photos work without it.
 
 ---
 
@@ -117,6 +135,11 @@ length, for ~10 MB. Drawing never replays at all.
 **React owns the chrome; an imperative loop owns the canvas.** They share a store,
 not a render cycle.
 
+**The network is never in the interaction path.** Drawing writes to the store and
+returns; a background flush batches changes after 800ms of idle, one request per
+image. Same principle as the layering — keep slow things out of the loop that has
+to feel instant.
+
 ---
 
 ## Layout
@@ -126,12 +149,15 @@ app/                 workspace page, theme tokens
 components/
   canvas/            canvas mount, render loop, pointer routing
   panels/            toolbar, image rail, class panel, attribute panel, export drawer
+app/api/             project, sync, class, upload, and export routes
 lib/
   canvas/            geometry, transform, hit testing, RLE, mask buffer, renderer
     layers/          one draw function per layer
     tools/           one file per tool
-  state/             normalized store, command stack, undoable edits
+  state/             normalized store, command stack, undoable edits, sync
+  db/                Prisma client, wire serialization, request validation
   export/            export builder, store mapping, JSON highlighter
+prisma/              schema and migrations
 docs/
   ARCHITECTURE.md    canvas performance and state handling
   specs/             design spec
@@ -142,6 +168,6 @@ public/samples/      bundled lab photos (Unsplash License, see CREDITS.md)
 
 ## Scope
 
-`docs/ARCHITECTURE.md` §8 lists what is deliberately not built and why —
-persistence, authentication, model-assisted pre-labeling, and COCO/YOLO export.
-§9 lists known tradeoffs.
+`docs/ARCHITECTURE.md` §9 lists what is deliberately not built and why —
+authentication, model-assisted pre-labeling, and COCO/YOLO export. §10 lists
+known tradeoffs.

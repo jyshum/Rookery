@@ -367,7 +367,7 @@ survive as markup. Two tests pin that, using `<script>` as a key and an
 
 ## 6. Testing strategy
 
-**136 tests across 13 suites.** The split is deliberate.
+**146 tests across 14 suites.** The split is deliberate.
 
 | Area | Suite | Tests |
 |---|---|---|
@@ -382,6 +382,7 @@ survive as markup. Two tests pin that, using `<script>` as a key and an
 | Viewport transform | `transform` | 8 |
 | Hit testing | `hit-test` | 8 |
 | Store to export mapping | `from-store` | 7 |
+| Storage serialization | `wire` | 10 |
 | Path simplification | `simplify` | 6 |
 | JSON highlighter escaping | `highlight` | 5 |
 
@@ -396,7 +397,92 @@ in seconds. Rendering is verified by looking at it.
 
 ---
 
-## 7. Stack
+## 7. Persistence
+
+### Local-first, by the same rule as the canvas
+
+Drawing writes to the store and returns. Nothing awaits a server. Pull the
+network cable mid-stroke and the canvas does not stutter; the work syncs later.
+
+A background flush runs after 800ms of idle and batches everything changed into
+one request per image. A brush stroke can produce dozens of store updates a
+second, and one request each would be both useless and hostile to the database.
+
+```
+draw -> local store (instant) -> canvas repaints
+             |
+        800ms idle
+             |
+   one batched POST per image -> Postgres
+```
+
+Same principle as the layering: keep slow things out of the loop that has to
+feel instant. One idea, applied twice.
+
+### Upsert rather than create/update
+
+Annotation ids are generated on the client, because drawing must not wait on a
+round trip to learn what a shape is called. That means the server cannot know
+whether a given shape is new. Upserting makes the question irrelevant, and makes
+a retried request idempotent: a sync that times out after committing can be
+safely re-sent rather than producing duplicates.
+
+Each flush runs in one transaction. A connection dropped midway would otherwise
+leave some shapes saved and others not, with the client believing all of them
+landed.
+
+Classes are synced before annotations, because an annotation referencing an
+unsaved class violates the foreign key. That ordering is correctness, not
+preference.
+
+### Projects are scoped to the browser
+
+There is no authentication, so a single shared project would let any visitor
+overwrite anyone else's annotations. Each browser creates its own project and
+keeps the id in `localStorage`.
+
+The tradeoff is honest: clear your site data and that project becomes
+unreachable. Real accounts are the answer if a dataset ever needs to be shared
+across machines. For a tool with no login, this is the cheapest thing that
+cannot corrupt someone else's work.
+
+### Running without a database is a supported mode
+
+If no database is configured or the API is unreachable, the app falls back to
+seeded in-memory data and says so in the status bar. Every tool, the class
+registry and the export all still work; the only thing lost is durability across
+a refresh.
+
+A labeling tool that refuses to open because a database is missing is worse than
+one that forgets.
+
+### Two connection strings
+
+Supabase exposes both, and they are not interchangeable:
+
+| Variable | Connection | Used by |
+|---|---|---|
+| `DATABASE_URL` | pooled, PgBouncer, port 6543 | the running app |
+| `DIRECT_URL` | direct or session pooler, port 5432 | migrations only |
+
+Serverless functions open many short-lived connections and Postgres refuses them
+without a pooler in front. But PgBouncer in transaction mode cannot run the
+session-level statements a migration needs. Pointing either at the wrong one
+fails in confusing ways.
+
+### Toolchain notes
+
+Prisma 7 moved connection URLs out of `schema.prisma` into `prisma.config.ts`,
+replaced the bundled query engine with driver adapters (`@prisma/adapter-pg`),
+and stopped auto-loading `.env` in the CLI. All three are handled explicitly and
+commented at their call sites.
+
+Worth flagging: `npm i prisma` installs a release candidate, because Prisma
+publishes RCs to the `latest` dist-tag. Both packages are pinned to 7.10.0.
+
+---
+
+## 8. Stack
 
 | Layer | Choice | Why |
 |---|---|---|
@@ -410,22 +496,21 @@ in seconds. Rendering is verified by looking at it.
 
 ---
 
-## 8. What is not built, and why
+## 9. What is not built, and why
 
 Each of these is a scope decision, not an oversight.
 
 | Not built | Reasoning |
 |---|---|
-| **Persistence** | Schema and route design are specified in the spec. The canvas and state layers are what the brief asked me to explain, and they got the time. State is in-memory; a refresh clears it. |
 | **Authentication** | Not the graded surface, and it would have cost a day. |
-| **Multi-user conflict handling** | With no shared backend there is nothing to conflict. When persistence lands, session-scoped project ids are the cheap correct answer: no auth, no shared row, no way for one annotator to clobber another. |
+| **Multi-user conflict handling** | Solved by scoping projects to the browser rather than sharing one row. Genuine multi-user editing — presence, per-image locking, conflict resolution — needs accounts first. |
 | **Model-assisted pre-labeling** | The natural next feature, and the app is already shaped for it: a model-drawn shape and a human-drawn shape are the same record. It is also how the human's share of the work shrinks over time. |
 | **COCO / YOLO export** | The RLE and bbox conventions were chosen to make these a mapping layer, not a rewrite. |
 | **Moving a mask** | `translateGeometry` refuses masks and says why: their pixels are baked at absolute positions, so moving one means re-rasterizing and re-encoding. Refusing beats silently producing a wrong mask. Tested. |
 
 ---
 
-## 9. Known tradeoffs
+## 10. Known tradeoffs
 
 1. **Polygon and brush overlap.** Both are in the brief and both are justified —
    polygon for rigid glassware, brush for spills, hands and tubing. But an
