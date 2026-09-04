@@ -45,4 +45,12 @@ export const SAMPLE_IMAGES: ImageAsset[] = [
     width: 1600,
     height: 1067,
   },
+  {
+    id: 'img_bench_05',
+    filename: 'bench_05.jpg',
+    source: 'BUNDLED',
+    url: '/samples/bench_05.jpg',
+    width: 1600,
+    height: 1067,
+  },
 ]
