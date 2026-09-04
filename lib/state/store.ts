@@ -43,6 +43,7 @@ export interface AppState {
   saveStatus: 'idle' | 'saving' | 'saved' | 'error' | 'offline'
   exportOpen: boolean
   projectId: string | null
+  storageEnabled: boolean
 
   // actions
   addAnnotation: (a: Annotation) => void
@@ -57,6 +58,7 @@ export interface AppState {
   setSaveStatus: (s: AppState['saveStatus']) => void
   setExportOpen: (open: boolean) => void
   setProjectId: (id: string | null) => void
+  setStorageEnabled: (on: boolean) => void
 
   setActiveImage: (id: string) => void
   setActiveClass: (id: string) => void
@@ -97,6 +99,7 @@ export const useStore = create<AppState>((set) => ({
   saveStatus: 'idle',
   exportOpen: false,
   projectId: null,
+  storageEnabled: false,
 
   addAnnotation: (a) =>
     set((s) => ({
@@ -143,6 +146,7 @@ export const useStore = create<AppState>((set) => ({
   setSaveStatus: (s) => set({ saveStatus: s }),
   setExportOpen: (open) => set({ exportOpen: open }),
   setProjectId: (id) => set({ projectId: id }),
+  setStorageEnabled: (on) => set({ storageEnabled: on }),
 
   // switching images clears the selection: an annotation on another photo
   // must never stay selected, or the attribute panel edits an invisible shape

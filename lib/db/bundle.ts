@@ -1,4 +1,5 @@
 import { prisma } from './prisma'
+import { isStorageConfigured } from './supabase'
 import { annotationFromWire, type WireAnnotation } from './wire'
 import type { Annotation, AttrType, AttrValue, ImageAsset, LabelClass } from '@/lib/canvas/types'
 import { BUILT_IN_CLASSES } from '@/lib/classes'
@@ -13,6 +14,8 @@ import { SAMPLE_IMAGES } from '@/lib/samples'
  */
 export interface ProjectBundle {
   project: { id: string; name: string }
+  /** Whether object storage is set up. Uploads are unavailable without it. */
+  storageEnabled: boolean
   images: ImageAsset[]
   classes: LabelClass[]
   annotations: Annotation[]
@@ -89,6 +92,7 @@ export async function loadProjectBundle(projectId: string): Promise<ProjectBundl
 
   return {
     project: { id: project.id, name: project.name },
+    storageEnabled: isStorageConfigured(),
     images: project.images.map((i) => ({
       id: i.id,
       filename: i.filename,

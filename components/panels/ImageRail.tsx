@@ -31,6 +31,7 @@ export function ImageRail() {
   const setActiveImage = useStore((s) => s.setActiveImage)
   const addImage = useStore((s) => s.addImage)
   const projectId = useStore((s) => s.projectId)
+  const storageEnabled = useStore((s) => s.storageEnabled)
   const annotations = useStore((s) => s.annotations)
   const annotationIds = useStore((s) => s.annotationIds)
 
@@ -48,11 +49,7 @@ export function ImageRail() {
 
     setError(null)
 
-    // uploads land in object storage, which only exists once a project does
-    if (!projectId) {
-      setError('Upload needs a database. Running in memory only.')
-      return
-    }
+    if (!projectId || !storageEnabled) return
 
     setBusy(true)
     try {
@@ -132,6 +129,7 @@ export function ImageRail() {
         <button
           onClick={() => inputRef.current?.click()}
           onDragOver={(e) => {
+            if (!storageEnabled) return
             e.preventDefault()
             setDragOver(true)
           }}
@@ -141,16 +139,27 @@ export function ImageRail() {
             setDragOver(false)
             void upload(e.dataTransfer.files)
           }}
-          disabled={busy}
+          disabled={busy || !storageEnabled}
+          title={
+            storageEnabled
+              ? 'Upload an image'
+              : 'Set up Supabase Storage to upload your own images'
+          }
           className={`flex w-full items-center justify-center gap-1.5 rounded border border-dashed py-2 text-[10px] transition ${
             dragOver
               ? 'border-[var(--color-accent)] text-[var(--color-accent)]'
               : 'border-[var(--color-line)] text-[var(--color-muted)] hover:text-[var(--color-text)]'
-          } disabled:opacity-40`}
+          } disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:text-[var(--color-muted)]`}
         >
           <Upload size={12} strokeWidth={1.75} />
           {busy ? 'Uploading' : 'Add image'}
         </button>
+
+        {!storageEnabled && (
+          <p className="mt-2 text-[9px] leading-snug text-[var(--color-muted)]">
+            Uploads need Supabase Storage. The bundled photos work without it.
+          </p>
+        )}
         {error && <p className="mt-2 text-[9px] leading-snug text-[#F87171]">{error}</p>}
       </div>
     </aside>

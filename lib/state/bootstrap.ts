@@ -51,6 +51,7 @@ async function createProject(): Promise<ProjectBundle> {
 function applyBundle(bundle: ProjectBundle): void {
   const s = useStore.getState()
   s.setProjectId(bundle.project.id)
+  s.setStorageEnabled(Boolean(bundle.storageEnabled))
   s.hydrate(bundle)
 
   // masks arrive as run-length encoding; rebuild their working bitmaps so the
@@ -69,6 +70,7 @@ function applyBundle(bundle: ProjectBundle): void {
 function applyLocalFallback(): void {
   const s = useStore.getState()
   s.setProjectId(null)
+  s.setStorageEnabled(false)
   s.hydrate({ images: SAMPLE_IMAGES, classes: BUILT_IN_CLASSES, annotations: [] })
   commandStack.clear()
   s.setSaveStatus('offline')

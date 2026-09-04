@@ -19,12 +19,20 @@ export function Toolbar() {
   const setTool = useStore((s) => s.setTool)
   const setExportOpen = useStore((s) => s.setExportOpen)
   const brushSize = useStore((s) => s.brushSize)
+  const classes = useStore((s) => s.classes)
+  const activeClassId = useStore((s) => s.activeClassId)
+  const selectedId = useStore((s) => s.selectedId)
+  const annotations = useStore((s) => s.annotations)
   const setBrushSize = useStore((s) => s.setBrushSize)
 
   // the command stack lives outside the store, so subscribe to it directly
   // rather than re-reading it on every render
   const [, forceUpdate] = useState(0)
   useEffect(() => commandStack.subscribe(() => forceUpdate((n) => n + 1)), [])
+
+  // what a new shape will be labelled as, or what the selected one already is
+  const selected = selectedId ? annotations[selectedId] : null
+  const shownClass = classes[selected ? selected.classId : (activeClassId ?? '')]
 
   return (
     <div className="flex h-11 shrink-0 items-center gap-1 border-b border-[var(--color-line)] bg-[var(--color-deep)] px-3">
@@ -44,6 +52,25 @@ export function Toolbar() {
       ))}
 
       <div className="mx-2 h-4 w-px bg-[var(--color-line)]" />
+
+      {shownClass && (
+        <div
+          className="flex items-center gap-1.5 pr-2"
+          title={
+            selected
+              ? 'The selected shape is labelled as this'
+              : 'New shapes will be labelled as this. Pick another in the class list.'
+          }
+        >
+          <span className="eyebrow">{selected ? 'Selected' : 'Drawing'}</span>
+          <span
+            className="h-2.5 w-2.5 rounded-sm"
+            style={{ background: shownClass.color }}
+          />
+          <span className="text-[11px] text-[var(--color-text)]">{shownClass.name}</span>
+          <div className="mx-1 h-4 w-px bg-[var(--color-line)]" />
+        </div>
+      )}
 
       {/* only meaningful while painting, so it appears with those tools */}
       {(tool === 'brush' || tool === 'erase') && (
