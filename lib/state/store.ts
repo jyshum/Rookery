@@ -62,6 +62,8 @@ export interface AppState {
   setActiveClass: (id: string) => void
   addImage: (i: ImageAsset) => void
   addClass: (c: LabelClass) => void
+  updateClass: (id: string, patch: Partial<Omit<LabelClass, 'id'>>) => void
+  removeClass: (id: string) => void
 
   hydrate: (payload: {
     images: ImageAsset[]
@@ -165,6 +167,26 @@ export const useStore = create<AppState>((set) => ({
       activeClassId: s.activeClassId ?? c.id,
     })),
 
+  updateClass: (id, patch) =>
+    set((s) => {
+      const existing = s.classes[id]
+      if (!existing) return s
+      return { classes: { ...s.classes, [id]: { ...existing, ...patch } } }
+    }),
+
+  // only safe when nothing references it; callers check first
+  removeClass: (id) =>
+    set((s) => {
+      const next = { ...s.classes }
+      delete next[id]
+      const ids = s.classIds.filter((x) => x !== id)
+      return {
+        classes: next,
+        classIds: ids,
+        activeClassId: s.activeClassId === id ? (ids[0] ?? null) : s.activeClassId,
+      }
+    }),
+
   hydrate: ({ images, classes, annotations }) =>
     set({
       images: Object.fromEntries(images.map((i) => [i.id, i])),
@@ -192,6 +214,10 @@ export const selectSelectedAnnotation = (s: AppState): Annotation | null =>
 
 export const selectActiveClass = (s: AppState): LabelClass | null =>
   s.activeClassId ? (s.classes[s.activeClassId] ?? null) : null
+
+/** How many annotations use a class. Guards deletion. */
+export const countAnnotationsForClass = (s: AppState, classId: string): number =>
+  s.annotationIds.reduce((n, id) => (s.annotations[id]?.classId === classId ? n + 1 : n), 0)
 
 /** Annotations belonging to the active image, in draw order. */
 export const selectVisibleAnnotations = (s: AppState): Annotation[] => {

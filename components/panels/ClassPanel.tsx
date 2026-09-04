@@ -1,22 +1,25 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, X } from 'lucide-react'
-import { useStore } from '@/lib/state/store'
+import { Pencil, Plus, Trash2, X } from 'lucide-react'
+import { countAnnotationsForClass, useStore } from '@/lib/state/store'
 import { changeClassCommand } from '@/lib/state/annotation-commands'
-import type { AttrType, AttributeDef } from '@/lib/canvas/types'
+import type { AttrType, AttributeDef, LabelClass } from '@/lib/canvas/types'
 
 const SWATCHES = ['#14B8A6', '#38BDF8', '#A78BFA', '#FBBF24', '#F87171', '#F472B6', '#4ADE80', '#FB923C']
-
 const TYPES: AttrType[] = ['TEXT', 'NUMBER', 'PERCENT', 'ENUM', 'BOOLEAN']
 
 /**
  * The class registry.
  *
- * Clicking a class does one of two things depending on context: with an
- * annotation selected it reassigns that annotation, otherwise it sets which
- * class the next shape will be drawn as. Same control, because "what is this"
- * is the same question whether you are about to draw or looking at a shape.
+ * Each row shows the attributes that class declares, so the schema is visible
+ * without having to draw a shape first. Any class can be edited, including the
+ * built-in ones, which is what makes "custom attributes" true rather than a
+ * claim about the create form.
+ *
+ * Clicking a class does one of two things by context. With an annotation
+ * selected it reassigns that annotation. Otherwise it sets what the next shape
+ * will be drawn as.
  */
 export function ClassPanel() {
   const classIds = useStore((s) => s.classIds)
@@ -26,6 +29,7 @@ export function ClassPanel() {
   const selectedId = useStore((s) => s.selectedId)
   const annotations = useStore((s) => s.annotations)
 
+  const [editing, setEditing] = useState<string | null>(null)
   const [creating, setCreating] = useState(false)
 
   const selected = selectedId ? annotations[selectedId] : null
@@ -41,7 +45,10 @@ export function ClassPanel() {
       <div className="flex items-center justify-between border-b border-[var(--color-line)] px-3 py-3">
         <p className="eyebrow">{selected ? 'Reassign class' : 'Draw as'}</p>
         <button
-          onClick={() => setCreating((v) => !v)}
+          onClick={() => {
+            setCreating((v) => !v)
+            setEditing(null)
+          }}
           title="New class"
           className="text-[var(--color-muted)] transition hover:text-[var(--color-text)]"
         >
@@ -49,36 +56,74 @@ export function ClassPanel() {
         </button>
       </div>
 
-      {creating && <NewClassForm onDone={() => setCreating(false)} />}
+      {creating && <ClassForm onDone={() => setCreating(false)} />}
 
       <div className="space-y-0.5 px-2 py-2">
         {classIds.map((id, i) => {
           const c = classes[id]
           if (!c) return null
+          if (editing === id) {
+            return <ClassForm key={id} existing={c} onDone={() => setEditing(null)} />
+          }
+
           const active = id === highlightId
 
           return (
-            <button
+            <div
               key={id}
-              onClick={() => pick(id)}
-              className={`flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-[11px] transition ${
-                active
-                  ? 'bg-[var(--color-surface)] text-[var(--color-text)]'
-                  : 'text-[var(--color-muted)] hover:bg-white/[0.03] hover:text-[var(--color-text)]'
+              className={`group rounded px-2 py-1.5 transition ${
+                active ? 'bg-[var(--color-surface)]' : 'hover:bg-white/[0.03]'
               }`}
             >
-              <span
-                className="h-2.5 w-2.5 shrink-0 rounded-sm"
-                style={{ background: c.color }}
-              />
-              <span className="flex-1 truncate">{c.name}</span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => pick(id)}
+                  className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                >
+                  <span
+                    className="h-2.5 w-2.5 shrink-0 rounded-sm"
+                    style={{ background: c.color }}
+                  />
+                  <span
+                    className={`flex-1 truncate text-[11px] ${
+                      active ? 'text-[var(--color-text)]' : 'text-[var(--color-muted)]'
+                    }`}
+                  >
+                    {c.name}
+                  </span>
+                </button>
+                <button
+                  onClick={() => {
+                    setEditing(id)
+                    setCreating(false)
+                  }}
+                  title="Edit class and attributes"
+                  className="text-[var(--color-muted)] opacity-0 transition group-hover:opacity-100 hover:text-[var(--color-text)]"
+                >
+                  <Pencil size={11} strokeWidth={1.75} />
+                </button>
+                {i < 9 && (
+                  <span className="w-2 text-right text-[9px] text-[var(--color-muted)]">
+                    {i + 1}
+                  </span>
+                )}
+              </div>
+
               {c.attributes.length > 0 && (
-                <span className="text-[9px] text-[var(--color-muted)]">
-                  {c.attributes.length}
-                </span>
+                <div className="mt-1 flex flex-wrap gap-1 pl-[18px]">
+                  {c.attributes.map((a) => (
+                    <span
+                      key={a.key}
+                      title={a.options ? a.options.join(', ') : a.type.toLowerCase()}
+                      className="rounded-sm bg-white/[0.06] px-1 py-px text-[9px] text-[var(--color-muted)]"
+                    >
+                      {a.name}
+                      <span className="ml-1 opacity-50">{a.type.toLowerCase()}</span>
+                    </span>
+                  ))}
+                </div>
               )}
-              {i < 9 && <span className="text-[9px] text-[var(--color-muted)]">{i + 1}</span>}
-            </button>
+            </div>
           )
         })}
       </div>
@@ -86,49 +131,77 @@ export function ClassPanel() {
   )
 }
 
-/**
- * Create a class and its attribute schema at runtime.
- *
- * The attribute rows here are the whole feature in miniature: whatever you
- * declare, the attribute panel will render controls for, with no code change
- * anywhere.
- */
-function NewClassForm({ onDone }: { onDone: () => void }) {
+interface Row {
+  name: string
+  type: AttrType
+  options: string
+  defaultValue: string
+}
+
+function toRows(defs: AttributeDef[]): Row[] {
+  return defs.map((d) => ({
+    name: d.name,
+    type: d.type,
+    options: d.options?.join(', ') ?? '',
+    defaultValue: d.defaultValue === undefined ? '' : String(d.defaultValue),
+  }))
+}
+
+/** Create or edit a class and the attributes it declares. */
+function ClassForm({ existing, onDone }: { existing?: LabelClass; onDone: () => void }) {
   const addClass = useStore((s) => s.addClass)
-  const [name, setName] = useState('')
-  const [color, setColor] = useState(SWATCHES[0])
-  const [rows, setRows] = useState<Array<{ name: string; type: AttrType; options: string }>>([])
+  const updateClass = useStore((s) => s.updateClass)
+  const removeClass = useStore((s) => s.removeClass)
+  const inUse = useStore((s) => (existing ? countAnnotationsForClass(s, existing.id) : 0))
+
+  const [name, setName] = useState(existing?.name ?? '')
+  const [color, setColor] = useState(existing?.color ?? SWATCHES[0])
+  const [rows, setRows] = useState<Row[]>(existing ? toRows(existing.attributes) : [])
 
   const field =
     'w-full rounded border border-[var(--color-line)] bg-[var(--color-surface)] px-2 py-1 text-[11px] text-[var(--color-text)] outline-none focus:border-[var(--color-primary)]'
 
+  function buildAttributes(): AttributeDef[] {
+    return rows
+      .filter((r) => r.name.trim())
+      .map((r) => {
+        const def: AttributeDef = { key: slug(r.name), name: r.name.trim(), type: r.type }
+        if (r.type === 'ENUM') {
+          def.options = r.options.split(',').map((o) => o.trim()).filter(Boolean)
+        }
+        if (r.defaultValue.trim()) {
+          def.defaultValue =
+            r.type === 'NUMBER' || r.type === 'PERCENT'
+              ? Number(r.defaultValue)
+              : r.type === 'BOOLEAN'
+                ? r.defaultValue.trim().toLowerCase() === 'true'
+                : r.defaultValue.trim()
+        }
+        return def
+      })
+  }
+
   function submit() {
     const trimmed = name.trim()
     if (!trimmed) return
+    const attributes = buildAttributes()
 
-    const attributes: AttributeDef[] = rows
-      .filter((r) => r.name.trim())
-      .map((r) => ({
-        key: slug(r.name),
-        name: r.name.trim(),
-        type: r.type,
-        ...(r.type === 'ENUM'
-          ? { options: r.options.split(',').map((o) => o.trim()).filter(Boolean) }
-          : {}),
-      }))
-
-    addClass({
-      id: `cls_${slug(trimmed)}_${Math.random().toString(36).slice(2, 7)}`,
-      key: slug(trimmed),
-      name: trimmed,
-      color,
-      attributes,
-    })
+    if (existing) {
+      updateClass(existing.id, { name: trimmed, color, attributes })
+    } else {
+      addClass({
+        id: `cls_${slug(trimmed)}_${Math.random().toString(36).slice(2, 7)}`,
+        key: slug(trimmed),
+        name: trimmed,
+        color,
+        attributes,
+      })
+    }
     onDone()
   }
 
   return (
-    <div className="space-y-2 border-b border-[var(--color-line)] bg-[var(--color-deep)] px-3 py-3">
+    <div className="space-y-2 border-y border-[var(--color-line)] bg-[var(--color-deep)] px-3 py-3">
       <input
         autoFocus
         placeholder="Class name"
@@ -162,9 +235,7 @@ function NewClassForm({ onDone }: { onDone: () => void }) {
             <select
               value={r.type}
               onChange={(e) =>
-                setRows(
-                  rows.map((x, j) => (j === i ? { ...x, type: e.target.value as AttrType } : x)),
-                )
+                setRows(rows.map((x, j) => (j === i ? { ...x, type: e.target.value as AttrType } : x)))
               }
               className={field}
             >
@@ -174,6 +245,13 @@ function NewClassForm({ onDone }: { onDone: () => void }) {
                 </option>
               ))}
             </select>
+            <button
+              onClick={() => setRows(rows.filter((_, j) => j !== i))}
+              title="Remove attribute"
+              className="shrink-0 px-1 text-[var(--color-muted)] transition hover:text-[#F87171]"
+            >
+              <X size={12} strokeWidth={1.75} />
+            </button>
           </div>
           {r.type === 'ENUM' && (
             <input
@@ -185,23 +263,54 @@ function NewClassForm({ onDone }: { onDone: () => void }) {
               className={field}
             />
           )}
+          <input
+            placeholder="Default (optional)"
+            value={r.defaultValue}
+            onChange={(e) =>
+              setRows(rows.map((x, j) => (j === i ? { ...x, defaultValue: e.target.value } : x)))
+            }
+            className={field}
+          />
         </div>
       ))}
 
       <button
-        onClick={() => setRows([...rows, { name: '', type: 'TEXT', options: '' }])}
+        onClick={() => setRows([...rows, { name: '', type: 'TEXT', options: '', defaultValue: '' }])}
         className="w-full rounded border border-dashed border-[var(--color-line)] py-1 text-[10px] text-[var(--color-muted)] transition hover:text-[var(--color-text)]"
       >
         + Attribute
       </button>
 
-      <button
-        onClick={submit}
-        disabled={!name.trim()}
-        className="w-full rounded bg-[var(--color-primary)] py-1.5 text-[11px] text-white transition hover:brightness-110 disabled:opacity-30"
-      >
-        Create class
-      </button>
+      <div className="flex gap-1">
+        <button
+          onClick={submit}
+          disabled={!name.trim()}
+          className="flex-1 rounded bg-[var(--color-primary)] py-1.5 text-[11px] text-white transition hover:brightness-110 disabled:opacity-30"
+        >
+          {existing ? 'Save changes' : 'Create class'}
+        </button>
+        <button
+          onClick={onDone}
+          className="rounded border border-[var(--color-line)] px-2 text-[11px] text-[var(--color-muted)] transition hover:text-[var(--color-text)]"
+        >
+          Cancel
+        </button>
+      </div>
+
+      {existing && (
+        <button
+          onClick={() => {
+            removeClass(existing.id)
+            onDone()
+          }}
+          disabled={inUse > 0}
+          title={inUse > 0 ? `${inUse} annotation(s) use this class` : 'Delete class'}
+          className="flex w-full items-center justify-center gap-1.5 rounded border border-[var(--color-line)] py-1 text-[10px] text-[var(--color-muted)] transition hover:text-[#F87171] disabled:opacity-30 disabled:hover:text-[var(--color-muted)]"
+        >
+          <Trash2 size={11} strokeWidth={1.75} />
+          {inUse > 0 ? `In use by ${inUse}` : 'Delete class'}
+        </button>
+      )}
     </div>
   )
 }

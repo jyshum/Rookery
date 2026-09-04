@@ -5,12 +5,24 @@ import type { AttrType } from '@/lib/canvas/types'
 
 const ATTR_TYPES: AttrType[] = ['NUMBER', 'PERCENT', 'ENUM', 'BOOLEAN', 'TEXT']
 
+interface IncomingAttribute {
+  key: string
+  name: string
+  type: AttrType
+  options?: string[]
+  defaultValue?: unknown
+}
+
 /**
- * Create a label class and its attribute schema.
+ * Create or update a label class and its attribute schema.
  *
- * The class id is client-supplied for the same reason annotation ids are: the
- * user can create a class and immediately draw with it, without the UI waiting
- * on a round trip to learn what to call it.
+ * Upserts, so the client does not have to track whether a class has been saved
+ * before. Class ids come from the client for the same reason annotation ids do:
+ * a user can invent a class and draw with it immediately.
+ *
+ * Attributes are replaced wholesale rather than diffed. A schema is small, and
+ * merging edits field by field would need stable per-attribute ids that add
+ * nothing here.
  */
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   try {
@@ -23,7 +35,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     if (typeof body.key !== 'string' || !body.key) throw new BadRequest('key is required')
     if (typeof body.color !== 'string') throw new BadRequest('color is required')
 
-    const attributes = Array.isArray(body.attributes) ? body.attributes : []
+    const attributes: IncomingAttribute[] = Array.isArray(body.attributes) ? body.attributes : []
     for (const a of attributes) {
       if (typeof a?.name !== 'string' || typeof a?.key !== 'string') {
         throw new BadRequest('each attribute needs a key and a name')
@@ -33,34 +45,67 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
       }
     }
 
-    const order = await prisma.labelClass.count({ where: { projectId } })
+    const attributeRows = attributes.map((a, i) => ({
+      key: a.key,
+      name: a.name,
+      type: a.type,
+      options: a.options ?? undefined,
+      defaultValue: (a.defaultValue ?? undefined) as never,
+      order: i,
+    }))
 
-    const created = await prisma.labelClass.create({
-      data: {
+    const existing = await prisma.labelClass.findUnique({
+      where: { id: body.id },
+      select: { id: true, order: true },
+    })
+
+    const order = existing?.order ?? (await prisma.labelClass.count({ where: { projectId } }))
+
+    const saved = await prisma.labelClass.upsert({
+      where: { id: body.id },
+      create: {
         id: body.id,
         projectId,
         key: body.key,
         name: body.name,
         color: body.color,
-        isBuiltIn: false,
+        isBuiltIn: Boolean(body.isBuiltIn),
         order,
-        attributes: {
-          create: attributes.map(
-            (a: { key: string; name: string; type: AttrType; options?: string[]; defaultValue?: unknown }, i: number) => ({
-              key: a.key,
-              name: a.name,
-              type: a.type,
-              options: a.options ?? undefined,
-              defaultValue: a.defaultValue ?? undefined,
-              order: i,
-            }),
-          ),
-        },
+        attributes: { create: attributeRows },
+      },
+      update: {
+        key: body.key,
+        name: body.name,
+        color: body.color,
+        // replace the schema rather than merge it
+        attributes: { deleteMany: {}, create: attributeRows },
       },
       select: { id: true },
     })
 
-    return Response.json(created, { status: 201 })
+    return Response.json(saved, { status: existing ? 200 : 201 })
+  } catch (err) {
+    return handleError(err)
+  }
+}
+
+/** Delete a class. Refused while annotations still reference it. */
+export async function DELETE(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  try {
+    await ctx.params
+    const classId = new URL(req.url).searchParams.get('classId')
+    if (!classId) throw new BadRequest('classId is required')
+
+    const inUse = await prisma.annotation.count({ where: { labelClassId: classId } })
+    if (inUse > 0) {
+      return Response.json(
+        { error: `${inUse} annotation(s) still use this class` },
+        { status: 409 },
+      )
+    }
+
+    await prisma.labelClass.delete({ where: { id: classId } })
+    return Response.json({ ok: true })
   } catch (err) {
     return handleError(err)
   }

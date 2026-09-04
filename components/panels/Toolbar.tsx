@@ -18,6 +18,8 @@ export function Toolbar() {
   const annotationCount = useStore((s) => s.annotationIds.length)
   const setTool = useStore((s) => s.setTool)
   const setExportOpen = useStore((s) => s.setExportOpen)
+  const brushSize = useStore((s) => s.brushSize)
+  const setBrushSize = useStore((s) => s.setBrushSize)
 
   // the command stack lives outside the store, so subscribe to it directly
   // rather than re-reading it on every render
@@ -42,6 +44,26 @@ export function Toolbar() {
       ))}
 
       <div className="mx-2 h-4 w-px bg-[var(--color-line)]" />
+
+      {/* only meaningful while painting, so it appears with those tools */}
+      {(tool === 'brush' || tool === 'erase') && (
+        <div className="flex items-center gap-2 pr-2">
+          <span className="eyebrow">Size</span>
+          <input
+            type="range"
+            min={1}
+            max={120}
+            value={brushSize}
+            onChange={(e) => setBrushSize(Number(e.target.value))}
+            title="Brush size ( [ and ] )"
+            className="w-24 accent-[var(--color-accent)]"
+          />
+          <span className="w-8 font-mono text-[10px] text-[var(--color-accent)]">
+            {brushSize}px
+          </span>
+          <div className="mx-1 h-4 w-px bg-[var(--color-line)]" />
+        </div>
+      )}
 
       <button
         onClick={() => commandStack.undo()}

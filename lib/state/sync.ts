@@ -23,7 +23,9 @@ const DEBOUNCE_MS = 800
 let lastSynced = new Map<string, Annotation>()
 let pendingUpserts = new Set<string>()
 let pendingDeletes = new Set<string>()
-let syncedClassIds = new Set<string>()
+/** Classes as last confirmed by the server, so edits can be detected. */
+let syncedClasses = new Map<string, LabelClass>()
+let pendingClassIds = new Set<string>()
 
 let timer: ReturnType<typeof setTimeout> | null = null
 let inFlight = false
@@ -33,9 +35,10 @@ let enabled = false
 /** Seed the diff baseline from what the server just gave us. */
 export function primeSync(annotations: Annotation[], classes: LabelClass[]): void {
   lastSynced = new Map(annotations.map((a) => [a.id, a]))
-  syncedClassIds = new Set(classes.map((c) => c.id))
+  syncedClasses = new Map(classes.map((c) => [c.id, c]))
   pendingUpserts.clear()
   pendingDeletes.clear()
+  pendingClassIds.clear()
 }
 
 export function startSync(): () => void {
@@ -91,7 +94,11 @@ function collect(s: AppState): void {
   }
 
   for (const id of s.classIds) {
-    if (!syncedClassIds.has(id)) changed = true
+    const current = s.classes[id]
+    if (current && syncedClasses.get(id) !== current) {
+      pendingClassIds.add(id)
+      changed = true
+    }
   }
 
   if (changed) schedule()
@@ -115,25 +122,28 @@ export async function flush(): Promise<void> {
 
   const upsertIds = [...pendingUpserts]
   const deleteIds = [...pendingDeletes]
-  const newClasses = s.classIds.filter((id) => !syncedClassIds.has(id)).map((id) => s.classes[id])
+  const classIds = [...pendingClassIds]
 
-  if (upsertIds.length === 0 && deleteIds.length === 0 && newClasses.length === 0) return
+  if (upsertIds.length === 0 && deleteIds.length === 0 && classIds.length === 0) return
 
   inFlight = true
   s.setSaveStatus('saving')
 
   try {
-    // classes first: an annotation referencing an unsaved class violates the
+    // classes first: an annotation referencing an unsaved class breaks the
     // foreign key, so this order is required
-    for (const cls of newClasses) {
+    for (const id of classIds) {
+      const cls = useStore.getState().classes[id]
       if (!cls) continue
+      // one endpoint for both cases, since the server upserts
       const res = await fetch(`/api/projects/${projectId}/classes`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(cls),
       })
       if (!res.ok) throw new Error(`class sync failed: ${res.status}`)
-      syncedClassIds.add(cls.id)
+      syncedClasses.set(id, cls)
+      pendingClassIds.delete(id)
     }
 
     const byImage = new Map<string, { upserts: Annotation[]; deletes: string[] }>()
@@ -192,7 +202,8 @@ export function __resetSyncState(): void {
   lastSynced = new Map()
   pendingUpserts = new Set()
   pendingDeletes = new Set()
-  syncedClassIds = new Set()
+  syncedClasses = new Map()
+  pendingClassIds = new Set()
   if (timer) clearTimeout(timer)
   timer = null
   inFlight = false

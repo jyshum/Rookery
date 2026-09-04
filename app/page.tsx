@@ -9,6 +9,7 @@ import { Toolbar } from '@/components/panels/Toolbar'
 import { ClassPanel } from '@/components/panels/ClassPanel'
 import { AttributePanel } from '@/components/panels/AttributePanel'
 import { ExportDrawer } from '@/components/panels/ExportDrawer'
+import { AnnotationList } from '@/components/panels/AnnotationList'
 
 export default function Workspace() {
   // loads the project from the API, falling back to in-memory seed data if no
@@ -43,6 +44,12 @@ export default function Workspace() {
               <p className="eyebrow">Attributes</p>
             </div>
             <AttributePanel />
+          </div>
+          <div className="border-t border-[var(--color-line)]">
+            <div className="border-b border-[var(--color-line)] px-3 py-3">
+              <p className="eyebrow">Annotations</p>
+            </div>
+            <AnnotationList />
           </div>
         </aside>
 
