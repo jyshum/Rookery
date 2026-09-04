@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Pencil, Plus, Trash2, X } from 'lucide-react'
 import { countAnnotationsForClass, useStore } from '@/lib/state/store'
+import { ATTR_TYPE_HINTS, ATTR_TYPE_LABELS } from '@/lib/classes'
 import { changeClassCommand } from '@/lib/state/annotation-commands'
 import type { AttrType, AttributeDef, LabelClass } from '@/lib/canvas/types'
 
@@ -114,11 +115,15 @@ export function ClassPanel() {
                   {c.attributes.map((a) => (
                     <span
                       key={a.key}
-                      title={a.options ? a.options.join(', ') : a.type.toLowerCase()}
+                      title={
+                        a.options
+                          ? `Pick from: ${a.options.join(', ')}`
+                          : ATTR_TYPE_HINTS[a.type]
+                      }
                       className="rounded-sm bg-white/[0.06] px-1 py-px text-[9px] text-[var(--color-muted)]"
                     >
                       {a.name}
-                      <span className="ml-1 opacity-50">{a.type.toLowerCase()}</span>
+                      <span className="ml-1 opacity-50">{ATTR_TYPE_LABELS[a.type].toLowerCase()}</span>
                     </span>
                   ))}
                 </div>
@@ -200,86 +205,128 @@ function ClassForm({ existing, onDone }: { existing?: LabelClass; onDone: () => 
     onDone()
   }
 
-  return (
-    <div className="space-y-2 border-y border-[var(--color-line)] bg-[var(--color-deep)] px-3 py-3">
-      <input
-        autoFocus
-        placeholder="Class name"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        className={field}
-      />
+  const labelCls = 'mb-1 block text-[9px] uppercase tracking-wider text-[var(--color-muted)]'
 
-      <div className="flex gap-1">
-        {SWATCHES.map((s) => (
-          <button
-            key={s}
-            onClick={() => setColor(s)}
-            className={`h-4 w-4 rounded-sm transition ${color === s ? 'ring-1 ring-white' : ''}`}
-            style={{ background: s }}
-          />
-        ))}
+  return (
+    <div className="space-y-3 border-y border-[var(--color-line)] bg-[var(--color-deep)] px-3 py-3">
+      <div>
+        <label className={labelCls}>Class name</label>
+        <input
+          autoFocus
+          placeholder="e.g. Reagent Bottle"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className={field}
+        />
       </div>
 
-      {rows.map((r, i) => (
-        <div key={i} className="space-y-1 rounded border border-[var(--color-line)] p-1.5">
-          <div className="flex gap-1">
-            <input
-              placeholder="Attribute"
-              value={r.name}
-              onChange={(e) =>
-                setRows(rows.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))
-              }
-              className={field}
-            />
-            <select
-              value={r.type}
-              onChange={(e) =>
-                setRows(rows.map((x, j) => (j === i ? { ...x, type: e.target.value as AttrType } : x)))
-              }
-              className={field}
-            >
-              {TYPES.map((t) => (
-                <option key={t} value={t}>
-                  {t.toLowerCase()}
-                </option>
-              ))}
-            </select>
+      <div>
+        <label className={labelCls}>Colour</label>
+        <div className="flex gap-1">
+          {SWATCHES.map((s) => (
             <button
-              onClick={() => setRows(rows.filter((_, j) => j !== i))}
-              title="Remove attribute"
-              className="shrink-0 px-1 text-[var(--color-muted)] transition hover:text-[#F87171]"
-            >
-              <X size={12} strokeWidth={1.75} />
-            </button>
-          </div>
-          {r.type === 'ENUM' && (
-            <input
-              placeholder="Options, comma separated"
-              value={r.options}
-              onChange={(e) =>
-                setRows(rows.map((x, j) => (j === i ? { ...x, options: e.target.value } : x)))
-              }
-              className={field}
+              key={s}
+              onClick={() => setColor(s)}
+              className={`h-4 w-4 rounded-sm transition ${color === s ? 'ring-1 ring-white' : ''}`}
+              style={{ background: s }}
             />
-          )}
-          <input
-            placeholder="Default (optional)"
-            value={r.defaultValue}
-            onChange={(e) =>
-              setRows(rows.map((x, j) => (j === i ? { ...x, defaultValue: e.target.value } : x)))
-            }
-            className={field}
-          />
+          ))}
         </div>
-      ))}
+      </div>
 
-      <button
-        onClick={() => setRows([...rows, { name: '', type: 'TEXT', options: '', defaultValue: '' }])}
-        className="w-full rounded border border-dashed border-[var(--color-line)] py-1 text-[10px] text-[var(--color-muted)] transition hover:text-[var(--color-text)]"
-      >
-        + Attribute
-      </button>
+      <div>
+        <label className={labelCls}>Attributes</label>
+        <p className="mb-2 text-[10px] leading-snug text-[var(--color-muted)]">
+          Questions asked about every shape you label as this class. Leave empty if
+          there is nothing to record beyond the shape itself.
+        </p>
+
+        <div className="space-y-2">
+          {rows.map((r, i) => (
+            <div key={i} className="space-y-2 rounded border border-[var(--color-line)] p-2">
+              <div className="flex items-start gap-1">
+                <div className="flex-1">
+                  <label className={labelCls}>What is it called</label>
+                  <input
+                    placeholder="e.g. Liquid Level"
+                    value={r.name}
+                    onChange={(e) =>
+                      setRows(rows.map((x, j) => (j === i ? { ...x, name: e.target.value } : x)))
+                    }
+                    className={field}
+                  />
+                </div>
+                <button
+                  onClick={() => setRows(rows.filter((_, j) => j !== i))}
+                  title="Remove this attribute"
+                  className="mt-4 shrink-0 px-1 text-[var(--color-muted)] transition hover:text-[#F87171]"
+                >
+                  <X size={12} strokeWidth={1.75} />
+                </button>
+              </div>
+
+              <div>
+                <label className={labelCls}>Kind of answer</label>
+                <select
+                  value={r.type}
+                  onChange={(e) =>
+                    setRows(
+                      rows.map((x, j) => (j === i ? { ...x, type: e.target.value as AttrType } : x)),
+                    )
+                  }
+                  className={field}
+                >
+                  {TYPES.map((t) => (
+                    <option key={t} value={t}>
+                      {ATTR_TYPE_LABELS[t]}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1 text-[9px] leading-snug text-[var(--color-muted)]">
+                  {ATTR_TYPE_HINTS[r.type]}
+                </p>
+              </div>
+
+              {r.type === 'ENUM' && (
+                <div>
+                  <label className={labelCls}>The choices, separated by commas</label>
+                  <input
+                    placeholder="e.g. Open, Closed"
+                    value={r.options}
+                    onChange={(e) =>
+                      setRows(rows.map((x, j) => (j === i ? { ...x, options: e.target.value } : x)))
+                    }
+                    className={field}
+                  />
+                </div>
+              )}
+
+              <div>
+                <label className={labelCls}>Starting value (optional)</label>
+                <input
+                  placeholder={
+                    r.type === 'PERCENT' ? 'e.g. 100' : r.type === 'BOOLEAN' ? 'true or false' : 'e.g. Closed'
+                  }
+                  value={r.defaultValue}
+                  onChange={(e) =>
+                    setRows(rows.map((x, j) => (j === i ? { ...x, defaultValue: e.target.value } : x)))
+                  }
+                  className={field}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+
+        <button
+          onClick={() =>
+            setRows([...rows, { name: '', type: 'TEXT', options: '', defaultValue: '' }])
+          }
+          className="mt-2 w-full rounded border border-dashed border-[var(--color-line)] py-1 text-[10px] text-[var(--color-muted)] transition hover:text-[var(--color-text)]"
+        >
+          + Add an attribute
+        </button>
+      </div>
 
       <div className="flex gap-1">
         <button
@@ -304,11 +351,11 @@ function ClassForm({ existing, onDone }: { existing?: LabelClass; onDone: () => 
             onDone()
           }}
           disabled={inUse > 0}
-          title={inUse > 0 ? `${inUse} annotation(s) use this class` : 'Delete class'}
+          title={inUse > 0 ? `${inUse} shape(s) use this class` : 'Delete class'}
           className="flex w-full items-center justify-center gap-1.5 rounded border border-[var(--color-line)] py-1 text-[10px] text-[var(--color-muted)] transition hover:text-[#F87171] disabled:opacity-30 disabled:hover:text-[var(--color-muted)]"
         >
           <Trash2 size={11} strokeWidth={1.75} />
-          {inUse > 0 ? `In use by ${inUse}` : 'Delete class'}
+          {inUse > 0 ? `Used by ${inUse} shape${inUse === 1 ? '' : 's'}` : 'Delete class'}
         </button>
       )}
     </div>

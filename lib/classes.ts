@@ -1,4 +1,27 @@
-import type { AttributeDef, AttrValue, LabelClass } from '@/lib/canvas/types'
+import type { AttrType, AttributeDef, AttrValue, LabelClass } from '@/lib/canvas/types'
+
+/**
+ * Plain-language names for attribute types.
+ *
+ * The stored values stay as they are, since the export schema and the database
+ * enum depend on them. These are only what a person reads. "enum" and "boolean"
+ * mean nothing to a lab technician, who is the person actually using this.
+ */
+export const ATTR_TYPE_LABELS: Record<AttrType, string> = {
+  TEXT: 'Text',
+  NUMBER: 'Number',
+  PERCENT: 'Percentage',
+  ENUM: 'Pick from a list',
+  BOOLEAN: 'Yes or no',
+}
+
+export const ATTR_TYPE_HINTS: Record<AttrType, string> = {
+  TEXT: 'Anything typed, such as a barcode',
+  NUMBER: 'A plain number, such as a slot number',
+  PERCENT: '0 to 100, shown as a slider',
+  ENUM: 'One choice from a fixed set, such as Open or Closed',
+  BOOLEAN: 'A checkbox that is either ticked or not',
+}
 
 /**
  * Starter label classes.

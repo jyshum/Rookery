@@ -196,6 +196,9 @@ export function useTools(
       applyCursor()
     })
 
+    // tools use right click (polygon finishes with it), so suppress the menu
+    const onContextMenu = (e: Event) => e.preventDefault()
+    el.addEventListener('contextmenu', onContextMenu)
     el.addEventListener('pointerdown', onPointerDown)
     el.addEventListener('pointermove', onPointerMove)
     el.addEventListener('pointerup', onPointerUp)
@@ -204,6 +207,7 @@ export function useTools(
     window.addEventListener('keyup', onKeyUp)
 
     return () => {
+      el.removeEventListener('contextmenu', onContextMenu)
       el.removeEventListener('pointerdown', onPointerDown)
       el.removeEventListener('pointermove', onPointerMove)
       el.removeEventListener('pointerup', onPointerUp)
