@@ -16,7 +16,16 @@ export function StatusBar() {
       <span>{classIds.length} classes</span>
       <span>zoom {Math.round(zoom * 100)}%</span>
       <span>brush {brushSize}px</span>
-      <span className="ml-auto">{saveStatus}</span>
+      <span
+        className="ml-auto"
+        title={
+          saveStatus === 'offline'
+            ? 'No database configured — annotations are kept in memory only'
+            : undefined
+        }
+      >
+        {saveStatus === 'offline' ? 'in-memory only' : saveStatus}
+      </span>
     </footer>
   )
 }

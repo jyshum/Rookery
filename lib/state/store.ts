@@ -55,8 +55,9 @@ export interface AppState {
   tool: ToolId
   viewport: Viewport
   brushSize: number
-  saveStatus: 'idle' | 'saving' | 'saved' | 'error'
+  saveStatus: 'idle' | 'saving' | 'saved' | 'error' | 'offline'
   exportOpen: boolean
+  projectId: string | null
 
   // ---- actions ------------------------------------------------------------
   addAnnotation: (a: Annotation) => void
@@ -70,6 +71,7 @@ export interface AppState {
   setBrushSize: (n: number) => void
   setSaveStatus: (s: AppState['saveStatus']) => void
   setExportOpen: (open: boolean) => void
+  setProjectId: (id: string | null) => void
 
   setActiveImage: (id: string) => void
   setActiveClass: (id: string) => void
@@ -107,6 +109,7 @@ export const useStore = create<AppState>((set) => ({
   brushSize: 12,
   saveStatus: 'idle',
   exportOpen: false,
+  projectId: null,
 
   addAnnotation: (a) =>
     set((s) => ({
@@ -152,6 +155,7 @@ export const useStore = create<AppState>((set) => ({
   setBrushSize: (n) => set({ brushSize: Math.max(1, Math.min(200, n)) }),
   setSaveStatus: (s) => set({ saveStatus: s }),
   setExportOpen: (open) => set({ exportOpen: open }),
+  setProjectId: (id) => set({ projectId: id }),
 
   // switching images clears the selection: an annotation on another photo
   // must never stay selected, or the attribute panel edits an invisible shape

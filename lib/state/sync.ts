@@ -1,0 +1,215 @@
+import type { Annotation, LabelClass } from '@/lib/canvas/types'
+import { annotationToWire } from '@/lib/db/wire'
+import { useStore, type AppState } from './store'
+
+/** Idle time before a burst of edits is flushed, in milliseconds. */
+const DEBOUNCE_MS = 800
+
+/**
+ * Local-first persistence.
+ *
+ * ---------------------------------------------------------------------------
+ * THE NETWORK IS NEVER IN THE INTERACTION PATH
+ * ---------------------------------------------------------------------------
+ * Drawing writes to the store and returns. Nothing awaits a server. You could
+ * pull the ethernet cable mid-stroke and the canvas would not stutter; the work
+ * simply syncs later.
+ *
+ * A background flush runs after 800ms of idle and batches everything that
+ * changed into one request per image. A brush stroke can produce dozens of
+ * store updates a second, and one request each would be both useless and
+ * hostile to the database.
+ *
+ * Same principle as the canvas layering: keep slow things out of the loop that
+ * has to feel instant.
+ *
+ * ---------------------------------------------------------------------------
+ * DEGRADING WITHOUT A BACKEND
+ * ---------------------------------------------------------------------------
+ * If no project was ever established — no database configured, or the API is
+ * unreachable — sync disables itself and the app runs entirely in memory. That
+ * is a supported mode, not a broken one: the tool is still fully usable, it
+ * just forgets on refresh.
+ */
+
+/** Annotations as last confirmed by the server, for diffing. */
+let lastSynced = new Map<string, Annotation>()
+let pendingUpserts = new Set<string>()
+let pendingDeletes = new Set<string>()
+let syncedClassIds = new Set<string>()
+
+let timer: ReturnType<typeof setTimeout> | null = null
+let inFlight = false
+let unsubscribe: (() => void) | null = null
+let enabled = false
+
+/** Seed the diff baseline from what the server just gave us. */
+export function primeSync(annotations: Annotation[], classes: LabelClass[]): void {
+  lastSynced = new Map(annotations.map((a) => [a.id, a]))
+  syncedClassIds = new Set(classes.map((c) => c.id))
+  pendingUpserts.clear()
+  pendingDeletes.clear()
+}
+
+export function startSync(): () => void {
+  if (unsubscribe) return unsubscribe
+  enabled = true
+
+  unsubscribe = useStore.subscribe((s) => {
+    if (!enabled || !s.projectId) return
+    collect(s)
+  })
+
+  const onHide = () => {
+    if (document.visibilityState === 'hidden') void flush()
+  }
+  document.addEventListener('visibilitychange', onHide)
+
+  const stop = () => {
+    enabled = false
+    unsubscribe?.()
+    unsubscribe = null
+    document.removeEventListener('visibilitychange', onHide)
+    if (timer) clearTimeout(timer)
+    timer = null
+  }
+  return stop
+}
+
+export function stopSync(): void {
+  enabled = false
+  unsubscribe?.()
+  unsubscribe = null
+}
+
+/** Diff the store against the last confirmed state and schedule a flush. */
+function collect(s: AppState): void {
+  let changed = false
+
+  for (const id of s.annotationIds) {
+    const current = s.annotations[id]
+    // identity comparison is sufficient: the store replaces objects on edit
+    if (current && lastSynced.get(id) !== current) {
+      pendingUpserts.add(id)
+      changed = true
+    }
+  }
+
+  for (const id of lastSynced.keys()) {
+    if (!s.annotations[id]) {
+      pendingDeletes.add(id)
+      pendingUpserts.delete(id)
+      changed = true
+    }
+  }
+
+  for (const id of s.classIds) {
+    if (!syncedClassIds.has(id)) changed = true
+  }
+
+  if (changed) schedule()
+}
+
+function schedule(): void {
+  if (timer) clearTimeout(timer)
+  timer = setTimeout(() => void flush(), DEBOUNCE_MS)
+}
+
+export async function flush(): Promise<void> {
+  if (inFlight) {
+    // a flush is already running; re-arm so this round is not lost
+    schedule()
+    return
+  }
+
+  const s = useStore.getState()
+  const projectId = s.projectId
+  if (!enabled || !projectId) return
+
+  const upsertIds = [...pendingUpserts]
+  const deleteIds = [...pendingDeletes]
+  const newClasses = s.classIds.filter((id) => !syncedClassIds.has(id)).map((id) => s.classes[id])
+
+  if (upsertIds.length === 0 && deleteIds.length === 0 && newClasses.length === 0) return
+
+  inFlight = true
+  s.setSaveStatus('saving')
+
+  try {
+    // classes first: an annotation referencing an unsaved class violates the
+    // foreign key, so ordering here is correctness, not preference
+    for (const cls of newClasses) {
+      if (!cls) continue
+      const res = await fetch(`/api/projects/${projectId}/classes`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(cls),
+      })
+      if (!res.ok) throw new Error(`class sync failed: ${res.status}`)
+      syncedClassIds.add(cls.id)
+    }
+
+    const byImage = new Map<string, { upserts: Annotation[]; deletes: string[] }>()
+
+    for (const id of upsertIds) {
+      const a = s.annotations[id]
+      if (!a) continue
+      const entry = byImage.get(a.imageId) ?? { upserts: [], deletes: [] }
+      entry.upserts.push(a)
+      byImage.set(a.imageId, entry)
+    }
+
+    for (const id of deleteIds) {
+      const imageId = lastSynced.get(id)?.imageId
+      if (!imageId) continue
+      const entry = byImage.get(imageId) ?? { upserts: [], deletes: [] }
+      entry.deletes.push(id)
+      byImage.set(imageId, entry)
+    }
+
+    for (const [imageId, batch] of byImage) {
+      const res = await fetch(`/api/images/${imageId}/annotations/sync`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          upserts: batch.upserts.map(annotationToWire),
+          deletes: batch.deletes,
+        }),
+      })
+      if (!res.ok) throw new Error(`annotation sync failed: ${res.status}`)
+    }
+
+    // only clear what we actually sent; edits made mid-flight stay pending
+    for (const id of upsertIds) {
+      pendingUpserts.delete(id)
+      const a = useStore.getState().annotations[id]
+      if (a) lastSynced.set(id, a)
+    }
+    for (const id of deleteIds) {
+      pendingDeletes.delete(id)
+      lastSynced.delete(id)
+    }
+
+    useStore.getState().setSaveStatus('saved')
+  } catch (err) {
+    console.error('[sync]', err)
+    useStore.getState().setSaveStatus('error')
+    // leave the pending sets intact so the next edit retries them
+  } finally {
+    inFlight = false
+  }
+}
+
+/** Test seam. */
+export function __resetSyncState(): void {
+  lastSynced = new Map()
+  pendingUpserts = new Set()
+  pendingDeletes = new Set()
+  syncedClassIds = new Set()
+  if (timer) clearTimeout(timer)
+  timer = null
+  inFlight = false
+  enabled = false
+  unsubscribe?.()
+  unsubscribe = null
+}

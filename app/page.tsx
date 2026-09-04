@@ -4,22 +4,17 @@ import { useEffect } from 'react'
 import { CanvasStage } from '@/components/canvas/CanvasStage'
 import { ImageRail } from '@/components/panels/ImageRail'
 import { StatusBar } from '@/components/panels/StatusBar'
-import { useStore } from '@/lib/state/store'
-import { SAMPLE_IMAGES } from '@/lib/samples'
-import { BUILT_IN_CLASSES } from '@/lib/classes'
+import { bootstrap } from '@/lib/state/bootstrap'
 import { Toolbar } from '@/components/panels/Toolbar'
 import { ClassPanel } from '@/components/panels/ClassPanel'
 import { AttributePanel } from '@/components/panels/AttributePanel'
 import { ExportDrawer } from '@/components/panels/ExportDrawer'
 
 export default function Workspace() {
-  // temporary: seeded locally until the backend lands in Task 22
+  // loads the project from the API, falling back to in-memory seed data if no
+  // database is configured. See lib/state/bootstrap.ts
   useEffect(() => {
-    useStore.getState().hydrate({
-      images: SAMPLE_IMAGES,
-      classes: BUILT_IN_CLASSES,
-      annotations: [],
-    })
+    void bootstrap()
   }, [])
 
   return (
