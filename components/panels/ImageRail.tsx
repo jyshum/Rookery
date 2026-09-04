@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import { useRef, useState } from 'react'
-import { Upload } from 'lucide-react'
+import { Trash2, Upload } from 'lucide-react'
 import { useStore } from '@/lib/state/store'
 import type { ImageAsset } from '@/lib/canvas/types'
 
@@ -30,6 +30,7 @@ export function ImageRail() {
   const activeImageId = useStore((s) => s.activeImageId)
   const setActiveImage = useStore((s) => s.setActiveImage)
   const addImage = useStore((s) => s.addImage)
+  const removeImage = useStore((s) => s.removeImage)
   const projectId = useStore((s) => s.projectId)
   const storageEnabled = useStore((s) => s.storageEnabled)
   const annotations = useStore((s) => s.annotations)
@@ -39,6 +40,32 @@ export function ImageRail() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [dragOver, setDragOver] = useState(false)
+
+  /**
+   * Remove an image and everything drawn on it.
+   *
+   * Confirmed only when annotations would be lost, since a prompt on every
+   * delete trains people to dismiss it without reading. The store is updated
+   * first so the rail responds immediately; the request follows.
+   */
+  async function remove(id: string, filename: string, count: number) {
+    if (count > 0) {
+      const ok = window.confirm(
+        `Delete ${filename}? ${count} annotation${count === 1 ? '' : 's'} on it will be lost.`,
+      )
+      if (!ok) return
+    }
+
+    removeImage(id)
+    if (!projectId) return
+
+    try {
+      const res = await fetch(`/api/images/${id}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error(`Delete failed (${res.status})`)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Delete failed')
+    }
+  }
 
   const countFor = (imageId: string) =>
     annotationIds.reduce((n, id) => (annotations[id]?.imageId === imageId ? n + 1 : n), 0)
@@ -88,32 +115,41 @@ export function ImageRail() {
           const count = countFor(id)
 
           return (
-            <button
+            <div
               key={id}
-              onClick={() => setActiveImage(id)}
-              className={`group relative block w-full overflow-hidden rounded-md border transition ${
+              className={`group relative overflow-hidden rounded-md border transition ${
                 active
                   ? 'border-[var(--color-accent)]'
                   : 'border-[var(--color-line)] hover:border-white/25'
               }`}
             >
-              <Image
-                src={img.url}
-                alt={img.filename}
-                width={img.width}
-                height={img.height}
-                unoptimized={img.source === 'UPLOADED'}
-                className="aspect-[3/2] w-full object-cover"
-              />
-              <span className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-black/70 px-1.5 py-1 text-[9px] text-[var(--color-muted)]">
-                <span className="truncate">{img.filename}</span>
-                {count > 0 && (
-                  <span className="ml-1 shrink-0 rounded-sm bg-[var(--color-primary)] px-1 text-white">
-                    {count}
-                  </span>
-                )}
-              </span>
-            </button>
+              <button onClick={() => setActiveImage(id)} className="block w-full">
+                <Image
+                  src={img.url}
+                  alt={img.filename}
+                  width={img.width}
+                  height={img.height}
+                  unoptimized={img.source === 'UPLOADED'}
+                  className="aspect-[3/2] w-full object-cover"
+                />
+                <span className="absolute inset-x-0 bottom-0 flex items-center justify-between bg-black/70 px-1.5 py-1 text-[9px] text-[var(--color-muted)]">
+                  <span className="truncate">{img.filename}</span>
+                  {count > 0 && (
+                    <span className="ml-1 shrink-0 rounded-sm bg-[var(--color-primary)] px-1 text-white">
+                      {count}
+                    </span>
+                  )}
+                </span>
+              </button>
+
+              <button
+                onClick={() => void remove(id, img.filename, count)}
+                title="Delete this image and its annotations"
+                className="absolute right-1 top-1 rounded bg-black/70 p-1 text-[var(--color-muted)] opacity-0 transition group-hover:opacity-100 hover:text-[#F87171]"
+              >
+                <Trash2 size={11} strokeWidth={1.75} />
+              </button>
+            </div>
           )
         })}
       </div>

@@ -106,3 +106,36 @@ describe('buildExport', () => {
     expect(JSON.parse(JSON.stringify(out))).toEqual(out)
   })
 })
+
+describe('coordinate precision', () => {
+  it('rounds bbox values to two decimals', () => {
+    const messy: Annotation = {
+      id: 'a1', imageId: 'i1', classId: 'c1',
+      geometry: { kind: 'box', x: 1.234567, y: 2.345678, w: 3.456789, h: 4.56789 },
+      bbox: [435.6807511737089, 326.9272300469484, 240.37558685446015, 300.4694835680751],
+      attributes: {},
+    }
+    const out = buildExport({ ...base, annotations: [messy] })
+    expect(out.images[0].annotations[0].bbox).toEqual([435.68, 326.93, 240.38, 300.47])
+  })
+
+  it('rounds box geometry', () => {
+    const messy: Annotation = {
+      id: 'a1', imageId: 'i1', classId: 'c1',
+      geometry: { kind: 'box', x: 1.234567, y: 2.345678, w: 3.456789, h: 4.56789 },
+      bbox: [1, 2, 3, 4], attributes: {},
+    }
+    const out = buildExport({ ...base, annotations: [messy] })
+    expect(out.images[0].annotations[0].geometry).toEqual({ x: 1.23, y: 2.35, w: 3.46, h: 4.57 })
+  })
+
+  it('rounds polygon points', () => {
+    const messy: Annotation = {
+      id: 'a1', imageId: 'i1', classId: 'c1',
+      geometry: { kind: 'polygon', points: new Float32Array([1.111111, 2.999999, 3.5, 4.25]) },
+      bbox: [1, 2, 3, 4], attributes: {},
+    }
+    const out = buildExport({ ...base, annotations: [messy] })
+    expect(out.images[0].annotations[0].geometry).toEqual({ points: [[1.11, 3], [3.5, 4.25]] })
+  })
+})

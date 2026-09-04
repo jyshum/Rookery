@@ -7,6 +7,7 @@ import { buildExport } from '@/lib/export/build-export'
 import { exportFilename, exportInputFromState } from '@/lib/export/from-store'
 import { downloadExport } from '@/lib/export/download'
 import { highlightJson } from '@/lib/export/highlight'
+import { formatExport } from '@/lib/export/format'
 
 /**
  * Export preview.
@@ -35,7 +36,7 @@ function ExportPanel() {
   const codeRef = useRef<HTMLPreElement>(null)
 
   const json = useMemo(
-    () => JSON.stringify(buildExport(exportInputFromState(state)), null, 2),
+    () => formatExport(buildExport(exportInputFromState(state))),
     [state],
   )
 

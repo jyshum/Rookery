@@ -1,6 +1,7 @@
 import { buildExport } from '@/lib/export/build-export'
 import { loadProjectBundle } from '@/lib/db/bundle'
 import { exportFilename } from '@/lib/export/from-store'
+import { formatExport } from '@/lib/export/format'
 import { handleError } from '@/lib/db/respond'
 
 /**
@@ -19,7 +20,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
 
     const doc = buildExport(bundle)
 
-    return new Response(JSON.stringify(doc, null, 2), {
+    return new Response(formatExport(doc), {
       headers: {
         'Content-Type': 'application/json',
         'Content-Disposition': `attachment; filename="${exportFilename()}"`,

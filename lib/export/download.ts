@@ -1,6 +1,7 @@
 import { useStore } from '@/lib/state/store'
 import { buildExport } from './build-export'
 import { exportFilename, exportInputFromState } from './from-store'
+import { formatExport } from './format'
 
 /**
  * Build the dataset document and hand it to the browser as a file.
@@ -12,7 +13,7 @@ import { exportFilename, exportInputFromState } from './from-store'
  */
 export function downloadExport(): void {
   const doc = buildExport(exportInputFromState(useStore.getState()))
-  const json = JSON.stringify(doc, null, 2)
+  const json = formatExport(doc)
 
   const blob = new Blob([json], { type: 'application/json' })
   const url = URL.createObjectURL(blob)

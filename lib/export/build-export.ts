@@ -55,6 +55,18 @@ export interface ExportDocument {
   }>
 }
 
+/**
+ * Round a coordinate to two decimal places.
+ *
+ * Pointer positions divided by a zoom factor produce values like
+ * 435.6807511737089. Those digits are an artefact of the arithmetic, not
+ * measurement: the underlying image has whole pixels. Two decimals keeps
+ * sub-pixel placement from a zoomed-in edit and drops the noise.
+ */
+function round(n: number): number {
+  return Math.round(n * 100) / 100
+}
+
 export function buildExport(input: ExportInput): ExportDocument {
   const classKeyById = new Map(input.classes.map((c) => [c.id, c.key]))
 
@@ -92,7 +104,7 @@ export function buildExport(input: ExportInput): ExportDocument {
         class: classKeyById.get(a.classId) ?? a.classId,
         type: a.geometry.kind,
         geometry: serializeGeometry(a.geometry),
-        bbox: a.bbox,
+        bbox: a.bbox.map(round) as [number, number, number, number],
         attributes: a.attributes,
       })),
     })),
@@ -105,12 +117,14 @@ export function buildExport(input: ExportInput): ExportDocument {
  * arrays, and `[[x, y], ...]` is what every annotation format uses.
  */
 function serializeGeometry(g: Geometry): Record<string, unknown> {
-  if (g.kind === 'box') return { x: g.x, y: g.y, w: g.w, h: g.h }
+  if (g.kind === 'box') {
+    return { x: round(g.x), y: round(g.y), w: round(g.w), h: round(g.h) }
+  }
   if (g.kind === 'mask') return { rle: g.rle, width: g.width, height: g.height }
 
   const points: number[][] = []
   for (let i = 0; i < g.points.length; i += 2) {
-    points.push([g.points[i], g.points[i + 1]])
+    points.push([round(g.points[i]), round(g.points[i + 1])])
   }
   return { points }
 }

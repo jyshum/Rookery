@@ -63,6 +63,7 @@ export interface AppState {
   setActiveImage: (id: string) => void
   setActiveClass: (id: string) => void
   addImage: (i: ImageAsset) => void
+  removeImage: (id: string) => void
   addClass: (c: LabelClass) => void
   updateClass: (id: string, patch: Partial<Omit<LabelClass, 'id'>>) => void
   removeClass: (id: string) => void
@@ -163,6 +164,27 @@ export const useStore = create<AppState>((set) => ({
             activeImageId: s.activeImageId ?? i.id,
           },
     ),
+
+  // takes the image's annotations with it, since they cannot outlive their photo
+  removeImage: (id) =>
+    set((s) => {
+      const images = { ...s.images }
+      delete images[id]
+      const imageIds = s.imageIds.filter((x) => x !== id)
+
+      const annotations = { ...s.annotations }
+      const annotationIds: string[] = []
+      for (const aid of s.annotationIds) {
+        if (annotations[aid]?.imageId === id) delete annotations[aid]
+        else annotationIds.push(aid)
+      }
+
+      const activeImageId = s.activeImageId === id ? (imageIds[0] ?? null) : s.activeImageId
+      const selectedId =
+        s.selectedId && !annotations[s.selectedId] ? null : s.selectedId
+
+      return { images, imageIds, annotations, annotationIds, activeImageId, selectedId }
+    }),
 
   addClass: (c) =>
     set((s) => ({
