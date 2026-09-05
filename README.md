@@ -7,8 +7,13 @@ Open a photo of a lab bench, trace the objects in it, tag each one with a class,
 record its state, and export a structured JSON dataset.
 
 **[Live demo](https://rookery-seven.vercel.app)** &nbsp;·&nbsp;
+**[Video: the tool](https://www.loom.com/share/1deafa587f4844478a25b91c6117d586)** &nbsp;·&nbsp;
+**[Video: architecture](https://www.loom.com/share/55f8d405db55438eb0f536945e5cb827)**
+
 [Canvas performance](#canvas-performance) &nbsp;·&nbsp;
-[State handling](#state-handling)
+[State handling](#state-handling) &nbsp;·&nbsp;
+[Data model](#data-model) &nbsp;·&nbsp;
+[Running it](#running-it)
 
 ![Rookery annotating a lab bench](.github/screenshot.png)
 
