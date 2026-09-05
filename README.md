@@ -6,6 +6,12 @@ built for lab imagery.
 Open a photo of a lab bench, trace the objects in it, tag each one with a class,
 record its state, and export a structured JSON dataset.
 
+**[Live demo](https://rookery-seven.vercel.app)** &nbsp;·&nbsp;
+[Canvas performance](#canvas-performance) &nbsp;·&nbsp;
+[State handling](#state-handling)
+
+![Rookery annotating a lab bench](.github/screenshot.png)
+
 ---
 
 ## Why it exists
