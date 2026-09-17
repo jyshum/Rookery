@@ -9,6 +9,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
+    "load-test": "node scripts/load-test.mjs",
     "postinstall": "prisma generate"
   },
   "dependencies": {
