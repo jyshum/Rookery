@@ -479,7 +479,7 @@ Open http://localhost:3000. Four lab bench photos are bundled, so there is
 something to annotate right away.
 
 ```bash
-npm test              # 146 tests
+npm test              # 175 tests
 npx tsc --noEmit      # typecheck
 npx eslint .          # lint
 ```
@@ -503,24 +503,28 @@ bucket. The bundled photos work without it.
 
 ## Testing
 
-146 tests across 14 suites.
+175 tests across 18 suites.
 
 | Area | Tests |
 |---|---|
 | Mask buffer and snapshots | 22 |
 | Geometry | 17 |
+| Export builder | 15 |
 | Store | 13 |
-| Export builder | 12 |
+| Request validation | 13 |
 | Command stack | 10 |
 | Annotation commands | 10 |
 | Storage serialization | 10 |
 | Renderer dirty flags | 9 |
 | Run-length encoding | 9 |
+| Export formatting | 9 |
 | Viewport transform | 8 |
 | Hit testing | 8 |
 | Store to export mapping | 7 |
 | Path simplification | 6 |
 | JSON highlighter escaping | 5 |
+| Mask export size | 3 |
+| Runtime label schema | 1 |
 
 Pure logic is tested properly, since that is where bugs hide and a test costs
 less than checking by hand. Canvas rendering and React panels are checked by
@@ -530,6 +534,39 @@ That second part came from experience during this build. Twice a hand-written
 pixel-sampling check reported a failure that turned out to be a stale
 `getImageData` readback rather than a real bug. A screenshot settled both in
 seconds.
+
+### Load and write integrity
+
+`scripts/load-test.mjs` drives the API the way the client does: each virtual
+user creates a project, then batches shapes into one sync per image, reloads
+the project, and exports. Every third loop it re-sends an earlier batch so the
+upsert path is exercised. Afterwards it counts rows in Postgres and compares
+them with the saves the server confirmed, so a lost write or a half-committed
+batch shows up rather than passing quietly.
+
+```bash
+BASE_URL=http://localhost:3000 DATABASE_URL=postgresql://localhost/rookery_load \
+  npm run load-test
+```
+
+Against a production build on local Postgres, 20 seconds per level:
+
+| Users | Requests | Req/sec | Sync transactions | Errors | Sync p95 | Lost writes |
+|---|---|---|---|---|---|---|
+| 10 | 6,080 | 302 | 3,797 | 0 | 78 ms | 0 |
+| 50 | 10,945 | 543 | 6,834 | 0 | 104 ms | 0 |
+| 100 | 14,532 | 709 | 9,025 | 0 | 152 ms | 0 |
+
+The virtual users sync back to back, while the real client waits 800ms, so 100
+of them is far more traffic than 100 annotators.
+
+The same script pointed at the deploy found a cheaper win than any code change.
+Functions were running in `iad1` while the database sits in `us-west-2`, so
+every query crossed the country. Moving them to `pdx1` took throughput at 10
+users from 14 to 105 requests per second and p95 saves from 1,032ms to 144ms.
+Past that the ceiling is Supabase's pooler, which allows 200 client
+connections; beyond it Prisma reports `EMAXCONN` and the transaction rolls back
+whole, which is why lost writes stayed at zero even while requests failed.
 
 ---
 
